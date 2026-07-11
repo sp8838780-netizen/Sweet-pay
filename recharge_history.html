@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Recharge History</title>
+    <style>
+        /* मोबाइल पर स्क्रीन एकदम फिक्स रखने के लिए */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            background: #f9f9f9;
+            font-family: sans-serif;
+            padding-bottom: 20px;
+            touch-action: manipulation;
+        }
+        .header { background: #fff; padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; cursor: pointer; }
+        .filter-bar { display: flex; justify-content: space-around; background: #fff; padding: 15px 0; font-size: 13px; color: #666; border-bottom: 1px solid #eee; }
+        .filter-bar span { cursor: pointer; padding: 5px; }
+        .filter-bar span.active { color: #000; border-bottom: 2px solid #000; }
+        .notice { background: #ece1ff; margin: 10px; padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; }
+        .history-card { background: #fff; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .status-pill { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+        
+        .success { color: #00bfa5; background: #e0f2f1; }
+        .cancel { color: #ff5252; background: #ffebee; }
+        .timeout { color: #ff9100; background: #fff3e0; }
+        .in-payment { color: #2979ff; background: #e3f2fd; }
+        .pending { color: #7e57c2; background: #f3e5f5; }
+    </style>
+</head>
+<body>
+
+    <div class="header" onclick="window.location.href='deposit.html'">&lt; Recharge History</div>
+    
+    <div class="filter-bar" id="filterBar">
+        <span onclick="filterData('All', event)" class="active">All</span>
+        <span onclick="filterData('In Payment', event)">In Payment</span>
+        <span onclick="filterData('Success', event)">Success</span>
+        <span onclick="filterData('Timeout', event)">Timeout</span>
+        <span onclick="filterData('Cancel', event)">Cancel</span>
+    </div>
+
+    <div class="notice">🟡 Complete a task to earn Commission and Bonus</div>
+
+    <div id="historyList"></div>
+
+    <script>
+        // ज़ूमिंग रोकने के लिए एक्स्ट्रा प्रोटेक्शन
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        
+        const staticTransactions = [
+            { amount: "5000 RS", status: "Cancel", income: "150", quota: "+5150", order: "BFbw0adp" },
+            { amount: "3300 RS", status: "Success", income: "99", quota: "+3399", order: "BFbw0msc" },
+            { amount: "479 RS", status: "Timeout", income: "14.37", quota: "+493.37", order: "BFb0y0yi" }
+        ];
+
+        function filterData(status, event) {
+            if (event) {
+                document.querySelectorAll('.filter-bar span').forEach(el => el.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+
+            const list = document.getElementById('historyList');
+            list.innerHTML = "";
+
+            const liveOrders = JSON.parse(localStorage.getItem('my_recharge_orders') || '[]');
+            
+            const formattedLiveOrders = liveOrders.map(order => {
+                const inc = (order.amount * 0.03).toFixed(2);
+                const qta = (order.amount * 1.03).toFixed(2);
+                return {
+                    amount: order.amount + " RS",
+                    status: order.status,
+                    income: inc,
+                    quota: "+" + qta,
+                    order: order.id
+                };
+            });
+
+            const allTransactions = [...formattedLiveOrders, ...staticTransactions];
+            const filtered = (status === 'All') ? allTransactions : allTransactions.filter(t => t.status === status);
+
+            filtered.forEach(t => {
+                const classStatus = t.status.toLowerCase().replace(" ", "-");
+                
+                list.innerHTML += `
+                    <div class="history-card">
+                        <div>
+                            <strong>${t.amount}</strong> <span class="status-pill ${classStatus}">${t.status}</span><br>
+                            <small style="color: #666;">Income ${t.income} | Quota ${t.quota}</small>
+                        </div>
+                        <div style="font-size: 12px; text-align: right; color: #666;">OrderNo: ${t.order} &gt;</div>
+                    </div>
+                `;
+            });
+        }
+        
+        filterData('All');
+    </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #fff; padding-bottom: 100px; }
+        .header { padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #eee; }
+        .tabs { display: flex; padding: 15px; gap: 15px; font-weight: bold; font-size: 18px; }
+        .tab { color: #aaa; cursor: pointer; }
+        .tab.active { color: #000; border-bottom: 2px solid #000; }
+        .sub-nav { display: flex; padding: 10px 15px; gap: 20px; font-weight: bold; color: #888; }
+        .vip-bar { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+        .vip-node { width: 30px; height: 30px; background: #8899aa; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .filter-row { display: flex; padding: 10px 15px; gap: 5px; align-items: center; flex-wrap: wrap; }
+        input, button, select { padding: 8px; border: 1px solid #eee; border-radius: 5px; }
+        .order { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f9f9f9; }
+        .buy-btn { background: #000; padding: 10px 25px; border-radius: 5px; color: #fff; font-weight: bold; cursor: pointer; }
+        .deposit-box { margin: 15px; padding: 15px; border: 1px solid #eee; border-radius: 10px; }
+        .match-card { margin: 15px; padding: 15px; border-radius: 10px; background: #f9f9f9; }
+        .usdt-container { padding: 20px; }
+        #qr-code { display: flex; justify-content: center; margin: 20px 0; }
+        .wallet-box { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+        .info-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .calc-input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">Deposit</div>
+    <div class="tabs">
+        <div id="inrTab" class="tab active" onclick="showTab('inr')">INR</div>
+        <div id="usdtTab" class="tab" onclick="showTab('usdt')">USDT</div>
+    </div>
+
+    <div id="inr-section">
+        <div class="sub-nav"><span>Payment Order</span> <span style="color:#000;">VIP</span></div>
+        <div class="vip-bar">
+            <div class="vip-node">5</div><div class="vip-node">10</div><div class="vip-node">20</div><div class="vip-node">30</div><div class="vip-node">40</div>
+        </div>
+        <div class="deposit-box">
+            <strong>Secure P2P Match</strong>
+            <input id="deposit-amount" type="number" placeholder="Enter amount (min ₹200)" style="width:100%; margin: 10px 0; box-sizing: border-box;">
+            <button onclick="matchAndSubmit()" style="width:100%; background:#1e90ff; color:#fff; border:none; padding:12px; border-radius:8px;">Match & Submit Deposit</button>
+        </div>
+        <div id="match-result" class="match-card" style="display:none;"></div>
+        <div class="filter-row">
+            <select id="sortOrder" style="padding: 8px;"><option>From low to high</option></select>
+            <input id="minVal" placeholder="Min" style="width:60px;"> - <input id="maxVal" placeholder="Max" style="width:60px;">
+            <button onclick="filterOrders()">Refresh</button>
+        </div>
+        <div id="orders"></div>
+    </div>
+
+    <div id="usdt-section" class="usdt-container" style="display:none;">
+        <div id="qr-code"></div>
+        <div onclick="document.getElementById('video-box').style.display='block'" style="cursor:pointer; font-weight:bold; margin: 10px 0;">▶ How Buy Quota?</div>
+        <div id="video-box" style="display:none; margin-bottom:15px;"><video width="100%" controls><source src="your-video.mp4" type="video/mp4"></video></div>
+        <div class="wallet-box">
+            <div><small>Wallet Address (TRC-20)</small><br><strong id="wallet-addr">TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ</strong></div>
+            <button onclick="copyAddr()">📋</button>
+        </div>
+        <div class="info-box">❗ You pay network fee.</div>
+        <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Calculator</span> <span>Ratio: 1 USDT = 105 INR</span></div>
+        <input type="number" class="calc-input" placeholder="Enter USDT" onkeyup="calc(this.value)">
+        <div style="font-size: 14px;">Estimated bonus: <span id="bonus">0</span>(2%) INR<br><strong>Total: <span id="total">0</span> INR</strong></div>
+        <p style="font-size:12px; color:#888; margin-top:20px;">* After the recharge is completed, please wait 3-5 minutes for the deposit to arrive.</p>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let allOrders = [];
+        for (let i = 1; i <= 2000; i++) {
+            let amt = (i <= 1000) ? (200 + (i * 48.8)) : (5000 + ((i - 1000) * 45));
+            allOrders.push(amt);
+        }
+
+        function renderOrders(list) {
+            document.getElementById('orders').innerHTML = list.map(amt => `
+            <div class="order">
+                <div><div style="font-weight:bold;">${amt.toFixed(0)} INR</div><small>Income 4% | Quota +${(amt*1.04).toFixed(2)}</small></div>
+                <div class="buy-btn" onclick="startDeposit(${amt.toFixed(0)})">Buy</div>
+            </div>`).join('');
+        }
+
+        function filterOrders() {
+            let min = document.getElementById('minVal').value || 0;
+            let max = document.getElementById('maxVal').value || 999999;
+            renderOrders(allOrders.filter(a => a >= min && a <= max));
+        }
+
+        function startDeposit(amount) {
+            document.getElementById('deposit-amount').value = amount;
+            showTab('inr');
+        }
+
+        async function matchAndSubmit() {
+            const amount = parseInt(document.getElementById('deposit-amount').value, 10);
+            const resultBox = document.getElementById('match-result');
+            if (!amount || amount < 200) {
+                alert('Minimum deposit amount is ₹200.');
+                return;
+            }
+
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = 'Matching a seller account...';
+
+            try {
+                const matchRes = await fetch(`/api/p2p/match-account?amount=${amount}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const matchData = await matchRes.json();
+
+                if (!matchData.success) {
+                    resultBox.innerHTML = `<strong>${matchData.message || 'Unable to match a seller.'}</strong>`;
+                    return;
+                }
+
+                const submitRes = await fetch('/api/submit-deposit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount, sellerID: matchData.sellerID, utr: `UTR${Date.now()}`, proofImage: 'upload-pending' })
+                });
+                const submitData = await submitRes.json();
+
+                resultBox.innerHTML = `
+                    <strong>Matched seller:</strong> ${matchData.sellerID}<br>
+                    <strong>Bank:</strong> ${matchData.bankDetails.bankName}<br>
+                    <strong>Account:</strong> ${matchData.bankDetails.accountNo}<br>
+                    <strong>Status:</strong> ${submitData.message || 'Request submitted'}
+                `;
+            } catch (error) {
+                console.error(error);
+                resultBox.innerHTML = '<strong>Unable to complete the deposit request.</strong>';
+            }
+        }
+
+        renderOrders(allOrders);
+
+        new QRCode(document.getElementById('qr-code'), { text: 'TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ', width: 180, height: 180 });
+
+        function copyAddr() {
+            const text = document.getElementById('wallet-addr').innerText;
+            navigator.clipboard.writeText(text);
+            alert('Address Copied: ' + text);
+        }
+
+        function calc(v) {
+            const amount = parseFloat(v) || 0;
+            const total = amount * 105;
+            const bonus = total * 0.02;
+            document.getElementById('bonus').innerText = bonus.toFixed(2);
+            document.getElementById('total').innerText = total.toFixed(2);
+        }
+
+        function showTab(type) {
+            document.getElementById('inr-section').style.display = (type === 'inr') ? 'block' : 'none';
+            document.getElementById('usdt-section').style.display = (type === 'usdt') ? 'block' : 'none';
+            document.getElementById('inrTab').className = (type === 'inr') ? 'tab active' : 'tab';
+            document.getElementById('usdtTab').className = (type === 'usdt') ? 'tab active' : 'tab';
+        }
+    </script>
+</body>
+</html>

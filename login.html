@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - SweetPay</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            overflow-x: hidden;
+            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        .form-container { width: 100%; max-width: 360px; padding: 24px; background: white; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); text-align: center; box-sizing: border-box; }
+        .logo { width: 100px; margin-bottom: 20px; }
+        input { width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #d8d8d8; border-radius: 8px; }
+        button { width: 100%; padding: 12px; background-color: #1e90ff; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
+        .register-link { margin-top: 15px; display: block; color: #1e90ff; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <script>
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+    </script>
+
+    <div class="form-container">
+        <img src="14320.jpg" alt="Logo" class="logo">
+        <h2>Login</h2>
+        <input type="text" id="mobile" placeholder="Mobile Number" required>
+        <input type="password" id="pass" placeholder="Password" required>
+        <button type="button" onclick="login()">Login</button>
+        <a href="register.html" class="register-link">Don't have an account? Register</a>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (token) {
+            window.location.href = 'dashboard.html';
+        }
+
+        async function login() {
+            const mobile = document.getElementById('mobile').value.trim();
+            const pass = document.getElementById('pass').value;
+
+            if (!mobile || !pass) {
+                alert('Please enter both mobile number and password');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile, pass })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userID', data.userID);
+                    localStorage.setItem('myReferralCode', data.myReferralCode);
+                    localStorage.setItem('userData', JSON.stringify(data.user || {}));
+                    alert('Login successful!');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert(data.message || 'Invalid mobile number or password.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Server connection error. Please try again later.');
+            }
+        }
+    </script>
+</body>
+</html>

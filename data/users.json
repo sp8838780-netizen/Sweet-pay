@@ -1,0 +1,24 @@
+[
+  {
+    "mobile": "9862713447",
+    "passwordHash": "34c102b0f6471697c33b4a6a913b75202d41243db9b74e1e7f5984e5e8b230f3c204805d2e0a8283c1b6aafac3ad7526172fafc50773aa1d1b0e100bb117cd9d",
+    "passwordSalt": "e8e1423aca80738e71fbfda6fc48df50",
+    "myReferralCode": "REFMASTER01",
+    "userID": "IDMASTER01",
+    "role": "ADMIN",
+    "isMaster": true,
+    "walletBalance": 500000,
+    "sellingLimit": 1000000,
+    "commission": 0,
+    "totalRecharge": 0,
+    "bankDetails": {
+      "accountNo": "999999999999",
+      "ifsc": "MASTER0001",
+      "bankName": "SweetPay",
+      "holderName": "Master Admin",
+      "bankStatus": "ON"
+    },
+    "status": "ON",
+    "_id": "User-1783801653030-d9fcafff5e0b68"
+  }
+]

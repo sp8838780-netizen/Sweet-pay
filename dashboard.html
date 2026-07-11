@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SweetPay Dashboard</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; padding-bottom: 90px; }
+        .header { padding: 15px; font-size: 22px; font-weight: bold; }
+        .banner { margin: 10px 15px; border-radius: 12px; overflow: hidden; }
+        .banner img { width: 100%; display: block; }
+        .ratio-section { display: flex; margin: 15px; border: 1px solid #eee; border-radius: 10px; padding: 15px; }
+        .ratio-box { flex: 1; }
+        .label { color: #666; font-size: 12px; margin-bottom: 5px; }
+        .value { font-size: 18px; font-weight: bold; }
+        .top-up { background: #000; color: #fff; margin: 15px; padding: 18px; text-align: center; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 15px; }
+        .stat-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .stat-label { color: #888; font-size: 12px; }
+        .stat-value { font-weight: bold; font-size: 15px; margin-top: 4px; }
+        .tutorials { padding: 20px 15px; }
+        .tutorial-title { font-weight: bold; font-size: 18px; margin-bottom: 15px; }
+        .tutorial-card { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .tutorial-text { font-weight: 500; }
+        .watch-link { color: #000; font-size: 13px; margin-top: 5px; display: block; text-decoration: none; font-weight: bold; }
+        .tutorial-img { width: 100px; height: 60px; background: #eee; border-radius: 8px; overflow: hidden; }
+        .tutorial-img img { width: 100%; height: 100%; object-fit: cover; }
+        .navbar { position: fixed; bottom: 0; width: 100%; background: #ffffff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; z-index: 1000; }
+        .nav-item { text-align: center; color: #666; text-decoration: none; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="header">SWEET PAY</div>
+    <div class="banner"><img src="banner.jpg" alt="Banner"></div>
+
+    <div class="ratio-section">
+        <div class="ratio-box">
+            <div class="label">USDT Ratio</div>
+            <div class="value">1 USDT ≈ 107.1 INR</div>
+            <div class="label" style="margin-top:5px;">Bonus ratio: 2%</div>
+        </div>
+        <div class="ratio-box">
+            <div class="label">INR Bonus Ratio</div>
+            <div class="value" style="font-size: 24px;">4%</div>
+        </div>
+    </div>
+
+    <div class="top-up" onclick="window.location.href='deposit.html'">Top up</div>
+
+    <div class="stats-grid">
+        <div class="stat-item"><div class="stat-label">Bank Count</div><div id="bank-count" class="stat-value">0.00</div></div>
+        <div class="stat-item"><div class="stat-label">Today Received</div><div id="today-received" class="stat-value">0.00</div></div>
+        <div class="stat-item"><div class="stat-label">Balance</div><div id="balance" class="stat-value">0.00</div></div>
+        <div class="stat-item"><div class="stat-label">Team Commission</div><div id="team-commission" class="stat-value">0.00</div></div>
+        <div class="stat-item"><div class="stat-label">Top up Bonus</div><div id="topup-bonus" class="stat-value">0.00</div></div>
+    </div>
+
+    <div class="tutorials">
+        <div class="tutorial-title">Tutorial</div>
+        <div class="tutorial-card">
+            <div>
+                <div class="tutorial-text">How to link to FreeCharge?</div>
+                <a href="video_link_1.mp4" class="watch-link">Watch video ></a>
+            </div>
+            <div class="tutorial-img"><img src="freecharge_thumb.jpg" alt="FreeCharge"></div>
+        </div>
+        <div class="tutorial-card">
+            <div>
+                <div class="tutorial-text">How to link to Indus?</div>
+                <a href="video_link_2.mp4" class="watch-link">Watch video ></a>
+            </div>
+            <div class="tutorial-img"><img src="indus_thumb.jpg" alt="Indus"></div>
+        </div>
+        <div class="tutorial-card">
+            <div>
+                <div class="tutorial-text">How to link to PhonePe and other?</div>
+                <a href="video_link_3.mp4" class="watch-link">Watch video ></a>
+            </div>
+            <div class="tutorial-img"><img src="phonepe_thumb.jpg" alt="PhonePe"></div>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="dashboard.html" class="nav-item" style="color: #000;">🏠<br>Home</a>
+        <a href="deposit.html" class="nav-item">💰<br>Deposit</a>
+        <a href="bank.html" class="nav-item">🏦<br>Bank</a>
+        <a href="team.html" class="nav-item">👥<br>Team</a>
+        <a href="profile.html" class="nav-item">👤<br>Profile</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/dashboard', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const user = data.user || {};
+                    document.getElementById('balance').textContent = `₹ ${Number(user.walletBalance || 0).toFixed(2)}`;
+                    document.getElementById('team-commission').textContent = `₹ ${Number(user.commission || 0).toFixed(2)}`;
+                    document.getElementById('topup-bonus').textContent = `₹ ${Number(user.totalRecharge || 0).toFixed(2)}`;
+                    document.getElementById('today-received').textContent = `₹ ${Number(user.totalRecharge || 0).toFixed(2)}`;
+                    document.getElementById('bank-count').textContent = user.bankDetails && user.bankDetails.accountNo ? '1' : '0';
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>

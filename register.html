@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Register - SweetPay</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .form-container {
+            width: 100%;
+            max-width: 360px;
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .logo { width: 100px; margin-bottom: 20px; }
+        input { width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #d8d8d8; border-radius: 8px; }
+        button { width: 100%; padding: 12px; background-color: #1e90ff; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
+        .login-link { margin-top: 15px; display: block; color: #1e90ff; text-decoration: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <img src="14320.jpg" alt="SweetPay Logo" class="logo">
+        <h2>Create Account</h2>
+        <input type="text" id="mobile" placeholder="Mobile Number" required>
+        <input type="password" id="pass" placeholder="Password" required>
+        <input type="password" id="confirmPass" placeholder="Confirm Password" required>
+        <input type="text" id="referral" placeholder="Referral Code" readonly>
+        <button type="button" onclick="register()">Register</button>
+        <a href="login.html" class="login-link">Already have an account? Login</a>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (token) {
+            window.location.href = 'dashboard.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        window.onload = function() {
+            document.getElementById('referral').value = code || 'NONE';
+        };
+
+        async function register() {
+            const mobile = document.getElementById('mobile').value.trim();
+            const pass = document.getElementById('pass').value;
+            const confirmPass = document.getElementById('confirmPass').value;
+            const referral = document.getElementById('referral').value;
+
+            if (!/^\d{10}$/.test(mobile)) {
+                alert('Please enter a valid 10-digit mobile number');
+                return;
+            }
+            if (pass.length < 6) {
+                alert('Password must be at least 6 characters.');
+                return;
+            }
+            if (pass !== confirmPass) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile, pass, referral })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userID', data.userID);
+                    localStorage.setItem('myReferralCode', data.myReferralCode);
+                    localStorage.setItem('userData', JSON.stringify(data.user || {}));
+                    alert('Registration successful!\nYour unique ID: ' + data.userID);
+                    window.location.href = 'profile.html';
+                } else {
+                    alert(data.message || 'Registration failed.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Server connection error. Please try again later.');
+            }
+        }
+    </script>
+</body>
+</html>

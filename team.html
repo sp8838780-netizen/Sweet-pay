@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Team Section</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; overflow-x: hidden; background: #f9f9f9; color: #000; font-family: sans-serif; padding-bottom: 90px; touch-action: manipulation; }
+        .header { padding: 20px; }
+        .stats-card { background: #444; color: #fff; padding: 20px; border-radius: 15px; margin: 15px; }
+        .stats-grid { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .invite-box { background: #fff; padding: 15px; margin: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
+        .copy-btn { cursor: pointer; background: #eee; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+        .team-member { background: #fff; padding: 15px; margin: 10px 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .member-id { font-weight: bold; color: #333; }
+        .member-comm { color: #28a745; font-weight: bold; }
+        .navbar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; z-index: 1000; }
+        .nav-item { text-align: center; font-size: 12px; color: #555; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="header"><h3>Team</h3></div>
+
+    <div class="stats-card">
+        <div class="stats-grid">
+            <div><strong id="total-commission">₹ 0.00</strong><br><small>Commission</small></div>
+            <div><strong id="team-recharge">₹ 0.00</strong><br><small>Team Recharge</small></div>
+        </div>
+        <div id="total-members">👤 0</div>
+    </div>
+
+    <div class="invite-box">
+        <span id="invite-link" style="word-break: break-all; font-size: 14px; color: #007bff;">Loading link...</span>
+        <button class="copy-btn" onclick="copyInvite()">©️</button>
+    </div>
+
+    <div class="header"><h4>Team Detail</h4></div>
+    <div id="team-list-container"><p style="text-align:center;color:#777;">Loading team details...</p></div>
+
+    <div class="navbar">
+        <a href="dashboard.html" class="nav-item">🏠<br>Home</a>
+        <a href="deposit.html" class="nav-item">💰<br>Deposit</a>
+        <a href="bank.html" class="nav-item">🏦<br>Bank</a>
+        <a href="team.html" class="nav-item" style="color: #000;">👥<br>Team</a>
+        <a href="profile.html" class="nav-item">👤<br>Profile</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const myRefCode = localStorage.getItem('myReferralCode');
+            const baseUrl = window.location.origin + '/regist';
+            if (myRefCode && myRefCode !== 'NONE') {
+                document.getElementById('invite-link').innerText = `${baseUrl}?code=${myRefCode}`;
+                await fetchTeamData(myRefCode, token);
+            } else {
+                document.getElementById('invite-link').innerText = 'Not Logged In / No Code Found';
+                document.getElementById('team-list-container').innerHTML = '<p style="text-align:center;color:red;">Please log in first.</p>';
+            }
+        });
+
+        async function fetchTeamData(refCode, token) {
+            try {
+                const response = await fetch(`/api/team-details?refCode=${refCode}`, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('total-commission').innerText = `₹ ${Number(data.totalCommission || 0).toFixed(2)}`;
+                    document.getElementById('team-recharge').innerText = `₹ ${Number(data.teamRecharge || 0).toFixed(2)}`;
+                    document.getElementById('total-members').innerText = `👤 ${data.teamMembers.length || 0}`;
+
+                    const listContainer = document.getElementById('team-list-container');
+                    listContainer.innerHTML = '';
+                    if (!data.teamMembers.length) {
+                        listContainer.innerHTML = '<p style="text-align:center;color:#777;margin-top:20px;">No members in your team yet.</p>';
+                        return;
+                    }
+
+                    data.teamMembers.forEach(member => {
+                        listContainer.insertAdjacentHTML('beforeend', `
+                            <div class="team-member">
+                                <div>
+                                    <span class="member-id">ID: ${member.userID}</span><br>
+                                    <small style="color:#777;">Recharge: ₹ ${Number(member.rechargeAmount || 0).toFixed(2)}</small>
+                                </div>
+                                <div class="member-comm">+ ₹ ${Number(member.commissionEarned || 0).toFixed(2)}</div>
+                            </div>
+                        `);
+                    });
+                } else {
+                    document.getElementById('team-list-container').innerHTML = '<p style="text-align:center;color:red;">Failed to load team details.</p>';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('team-list-container').innerHTML = '<p style="text-align:center;color:red;">Server connection error.</p>';
+            }
+        }
+
+        function copyInvite() {
+            const link = document.getElementById('invite-link').innerText;
+            if (link !== 'Loading link...' && link !== 'Not Logged In / No Code Found') {
+                navigator.clipboard.writeText(link).then(() => alert('Your permanent invite link copied!'));
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bank Management</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #0e1215; color: #fff; font-family: sans-serif; padding: 20px; padding-bottom: 90px; box-sizing: border-box; }
+        .input-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; background: #1c2227; border: 1px solid #333; color: #fff; border-radius: 8px; }
+        .save-btn { width: 100%; padding: 15px; background: #00d4ff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; }
+        #bank-list-page { display: none; }
+        .bank-card { background: #1c2227; padding: 20px; border-radius: 12px; border: 1px solid #333; display: flex; align-items: center; gap: 15px; }
+        .bank-logo-box { width: 50px; height: 50px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .bank-logo-box img { width: 100%; height: 100%; object-fit: cover; }
+        .add-more-btn { margin-top: 20px; text-align: center; color: #00d4ff; cursor: pointer; text-decoration: underline; }
+        .navbar { position: fixed; bottom: 0; left: 0; width: 100%; background: #1c2227; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #333; z-index: 1000; }
+        .nav-item { color: #fff; text-decoration: none; text-align: center; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="add-bank-page">
+        <h3>Add Bank Account</h3>
+        <div class="input-group"><input type="text" id="holderName" placeholder="Account Holder Name"></div>
+        <div class="input-group"><input type="text" id="accNum" placeholder="Account Number"></div>
+        <div class="input-group"><input type="text" id="ifscCode" placeholder="IFSC Code"></div>
+        <div class="input-group"><input type="text" id="bankName" placeholder="Bank Name (e.g. SBI, HDFC)"></div>
+        <button class="save-btn" onclick="saveBank()">SAVE DETAILS</button>
+    </div>
+
+    <div id="bank-list-page">
+        <h3>My Bank Accounts</h3>
+        <div id="saved-details" class="bank-card"></div>
+        <div class="add-more-btn" onclick="showAddPage()">+ Add Another Bank</div>
+    </div>
+
+    <div class="navbar">
+        <a href="dashboard.html" class="nav-item">🏠<br>Home</a>
+        <a href="deposit.html" class="nav-item">💰<br>Deposit</a>
+        <a href="bank.html" class="nav-item">🏦<br>Bank</a>
+        <a href="team.html" class="nav-item">👥<br>Team</a>
+        <a href="profile.html" class="nav-item">👤<br>Profile</a>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        async function loadBank() {
+            try {
+                const response = await fetch('/api/bank', { headers: { Authorization: `Bearer ${token}` } });
+                const data = await response.json();
+                if (data.success && data.bankDetails) {
+                    renderBank(data.bankDetails);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function saveBank() {
+            const payload = {
+                holderName: document.getElementById('holderName').value.trim(),
+                accountNo: document.getElementById('accNum').value.trim(),
+                ifsc: document.getElementById('ifscCode').value.trim(),
+                bankName: document.getElementById('bankName').value.trim()
+            };
+
+            if (!payload.holderName || !payload.accountNo || !payload.ifsc || !payload.bankName) {
+                alert('Please fill all details.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/bank', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    renderBank(payload);
+                    alert('Bank details saved successfully.');
+                } else {
+                    alert(data.message || 'Unable to save bank details.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Server connection error.');
+            }
+        }
+
+        function renderBank(data) {
+            const bankName = data.bankName || 'BANK';
+            const bankDomain = bankName.toLowerCase().replace(/\s/g, '') + '.com';
+            const logoUrl = `https://www.google.com/s2/favicons?domain=${bankDomain}&sz=128`;
+            document.getElementById('saved-details').innerHTML = `
+                <div class="bank-logo-box">
+                    <img src="${logoUrl}" onerror="this.src='https://via.placeholder.com/50?text=${bankName.charAt(0).toUpperCase()}'">
+                </div>
+                <div>
+                    <strong style="font-size: 18px;">${bankName.toUpperCase()}</strong><br>
+                    <small style="color: #aaa;">Acc: ****${String(data.accountNo || '').slice(-4)}</small>
+                </div>
+            `;
+            document.getElementById('add-bank-page').style.display = 'none';
+            document.getElementById('bank-list-page').style.display = 'block';
+        }
+
+        function showAddPage() {
+            document.getElementById('add-bank-page').style.display = 'block';
+            document.getElementById('bank-list-page').style.display = 'none';
+        }
+
+        window.onload = loadBank;
+    </script>
+</body>
+</html>

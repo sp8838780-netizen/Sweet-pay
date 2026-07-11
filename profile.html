@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profile</title>
+    <style>
+        body { margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #000; padding-bottom: 90px; }
+        .header-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 5px 20px; }
+        .edit-profile { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 19px; }
+        .user-id { padding: 0 20px; font-weight: 500; font-size: 15px; margin-bottom: 25px; color: #333; }
+        .quota-section { padding: 0 20px; margin-bottom: 20px; }
+        .quota-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; }
+        .amount { font-size: 38px; font-weight: 900; }
+        .top-up-btn { background: #000; color: #fff; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 14px; }
+        .reward-ratio { color: #888; font-size: 14px; margin-top: 4px; }
+        .banner { margin: 25px 20px; background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 15px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .banner-text h4 { margin: 0; font-size: 16px; font-weight: 700; color: #fff; }
+        .banner-text p { margin: 4px 0 0 0; font-size: 12px; color: #b0c4de; }
+        .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #f8f8f8; text-decoration: none; color: #000; font-weight: 600; font-size: 15px; }
+        .icon-box { font-size: 22px; margin-right: 12px; }
+        .navbar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #f0f0f0; }
+        .nav-item { text-align: center; font-size: 11px; color: #888; text-decoration: none; }
+        .active { color: #000; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="header-top">
+        <div class="edit-profile">👤 Profile</div>
+    </div>
+    <div class="user-id">ID: <span id="user-id">Loading...</span></div>
+
+    <div class="quota-section">
+        <div class="quota-title">⚪ Balance</div>
+        <div class="balance-row">
+            <div><span id="balance" class="amount">0</span> <span style="font-size: 18px; font-weight: bold;">INR</span></div>
+            <a href="deposit.html" class="top-up-btn">Top up</a>
+        </div>
+        <div id="referral-code" class="reward-ratio">Referral Code: --</div>
+    </div>
+
+    <a href="team.html" class="banner">
+        <div class="banner-text">
+            <h4>Invite user rewards</h4>
+            <p>Earn team commissions</p>
+        </div>
+        <div style="font-size: 35px;">💰</div>
+    </a>
+
+    <a href="recharge_history.html" class="menu-item"><div><span class="icon-box">👛</span> Recharge History</div> <span>></span></a>
+    <a href="token_history.html" class="menu-item"><div><span class="icon-box">📄</span> Token History</div> <span>></span></a>
+    <div class="menu-item"><div><span class="icon-box">🌐</span> Languages</div> <span style="color:#000;">English ></span></div>
+    <a href="https://t.me/ARPAYvipsupport" class="menu-item"><div><span class="icon-box">💬</span> Contact Us</div> <span>></span></a>
+    <a href="#" onclick="logout()" class="menu-item"><div><span class="icon-box">↩️</span> Sign Out</div> <span>></span></a>
+
+    <div class="navbar">
+        <a href="dashboard.html" class="nav-item">🏠<br>Home</a>
+        <a href="deposit.html" class="nav-item">↔️<br>Deposit</a>
+        <a href="bank.html" class="nav-item">💼<br>Bank</a>
+        <a href="team.html" class="nav-item">👥<br>Team</a>
+        <a href="profile.html" class="nav-item active">⚫<br>Me</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
+                const data = await response.json();
+                if (data.success) {
+                    const user = data.user || {};
+                    document.getElementById('user-id').textContent = user.userID || 'Unknown';
+                    document.getElementById('balance').textContent = `₹ ${Number(user.walletBalance || 0).toFixed(2)}`;
+                    document.getElementById('referral-code').textContent = `Referral Code: ${user.myReferralCode || '--'}`;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userID');
+            localStorage.removeItem('myReferralCode');
+            localStorage.removeItem('userData');
+            alert('Signed Out!');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
