@@ -1,1 +1,1 @@
-# Randi-pay
+# Sweet-pay
