@@ -3,37 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Order Details</title>
+    <title>Task Detail</title>
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f8f8f8; color: #111; padding-bottom: 30px; }
-        .card { margin: 16px; padding: 16px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        .title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-        .muted { color: #666; font-size: 13px; }
-        input, button, textarea { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; }
-        button { background: #000; color: #fff; border: none; cursor: pointer; }
-        .secondary { background: #f2f2f2; color: #111; }
-        .timer { font-size: 24px; font-weight: 700; color: #e53935; margin: 10px 0; }
-        .row { display: flex; justify-content: space-between; margin: 8px 0; }
-        .copy-btn { width: auto; padding: 8px 12px; float: right; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f8f8; color: #111; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #fff; border-bottom: 1px solid #eee; }
+        .header-title { font-size: 18px; font-weight: 700; flex: 1; text-align: center; }
+        .back-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; width: 30px; text-align: left; }
+        .timer-display { font-weight: 700; font-size: 14px; text-align: right; width: 50px; }
+        
+        .card { margin: 12px; padding: 16px; background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        
+        .payment-section { }
+        .payment-label { font-size: 12px; color: #999; font-weight: 600; margin-bottom: 4px; }
+        .payment-content { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .payment-content:last-child { border-bottom: none; }
+        .payment-value { font-size: 14px; font-weight: 500; word-break: break-all; flex: 1; }
+        .copy-icon { background: #fff; border: 1px solid #ddd; padding: 6px 10px; margin-left: 12px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+        
+        .quickpay-btn { width: 100%; padding: 14px; background: #ff9800; color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; margin: 16px 0; }
+        
+        .form-section { }
+        .form-label { font-size: 13px; color: #666; font-weight: 600; margin-top: 12px; margin-bottom: 6px; display: block; }
+        input[type="text"], input[type="file"], textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+        textarea { resize: vertical; }
+        
+        .form-hint { font-size: 12px; color: #999; margin: 8px 0 16px 0; }
+        
+        .button-group { display: flex; gap: 12px; margin-top: 16px; }
+        .submit-btn { flex: 1; padding: 12px; background: #000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .cancel-btn { flex: 1; padding: 12px; background: #e53935; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #fff; padding: 24px; border-radius: 12px; max-width: 320px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+        .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+        .modal-message { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .modal-buttons { display: flex; gap: 10px; }
+        .modal-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+        .modal-cancel { background: #f0f0f0; color: #111; }
+        .modal-confirm { background: #e53935; color: #fff; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="title">Bank Details</div>
-        <div id="order-meta" class="muted">Loading order...</div>
-        <div class="timer" id="countdown">30:00</div>
-        <div class="row"><strong>Account No</strong><span id="account-no">--</span><button class="copy-btn" onclick="copyText('account-no')">Copy</button></div>
-        <div class="row"><strong>IFSC</strong><span id="ifsc">--</span><button class="copy-btn" onclick="copyText('ifsc')">Copy</button></div>
-        <div class="row"><strong>Bank</strong><span id="bank-name">--</span></div>
-        <div class="row"><strong>Holder</strong><span id="holder-name">--</span></div>
+    <!-- Header -->
+    <div class="header">
+        <button class="back-btn" onclick="goBack()"><</button>
+        <div class="header-title">Task Detail</div>
+        <div class="timer-display" id="timer-display">30:00</div>
     </div>
 
-    <div class="card">
-        <div class="title">Submit Payment Proof</div>
-        <input id="utr" placeholder="Enter UTR">
-        <textarea id="proof" rows="4" placeholder="Paste screenshot details or upload note"></textarea>
-        <button onclick="submitProof()">Submit</button>
-        <button class="secondary" onclick="cancelOrder()" style="margin-top:8px;">Cancel</button>
+    <!-- Payment Details -->
+    <div class="card payment-section">
+        <div class="payment-label">Payment</div>
+        <div class="payment-content">
+            <div class="payment-value" id="payment-upi">9862713447@freecharge</div>
+            <button class="copy-icon" onclick="copyField('payment-upi')">📋</button>
+        </div>
+        
+        <div class="payment-label" style="margin-top: 16px;">Bank</div>
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">Bank Card Number</strong><span class="payment-value" id="account-no">5639101000353</span></div>
+            <button class="copy-icon" onclick="copyField('account-no')">📋</button>
+        </div>
+        
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">Bank Name (IMPS)</strong><span class="payment-value" id="bank-name">IMPS</span></div>
+            <button class="copy-icon" onclick="copyField('bank-name')">📋</button>
+        </div>
+        
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">IFSC</strong><span class="payment-value" id="ifsc">BKID0005639</span></div>
+            <button class="copy-icon" onclick="copyField('ifsc')">📋</button>
+        </div>
+        
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">Payee Name</strong><span class="payment-value" id="holder-name">Veerla Joji babu</span></div>
+            <button class="copy-icon" onclick="copyField('holder-name')">📋</button>
+        </div>
+        
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">Money</strong><span class="payment-value" id="amount">3690 RS</span></div>
+            <button class="copy-icon" onclick="copyField('amount')">📋</button>
+        </div>
+        
+        <div class="payment-content">
+            <div><strong style="display: block; font-size: 13px;">Remark</strong><span class="payment-value" id="remark">OFIeaho46off</span></div>
+            <button class="copy-icon" onclick="copyField('remark')">📋</button>
+        </div>
+    </div>
+
+    <!-- QuickPay Button -->
+    <button class="quickpay-btn">QuickPay</button>
+
+    <!-- Payment Proof Form -->
+    <div class="card form-section">
+        <label class="form-label">UTR(UPI Ref.ID)</label>
+        <input type="text" id="utr" placeholder="Enter UTR reference number">
+        
+        <label class="form-label">Upload Proof of Payment</label>
+        <input type="file" id="proof-image" accept="image/*">
+        <div class="form-hint">📷 Please upload a clear screenshot of the payment confirmation</div>
+        
+        <div class="button-group">
+            <button class="submit-btn" onclick="submitProof()">Submit</button>
+            <button class="cancel-btn" onclick="showCancelConfirm()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Cancel Confirmation Modal -->
+    <div class="modal" id="cancel-modal">
+        <div class="modal-content">
+            <div class="modal-title">Cancel Order</div>
+            <div class="modal-message">Are you sure cancel this order? You will not be able to undo this action once it's confirmed.</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-cancel" onclick="closeCancelModal()">Cancel</button>
+                <button class="modal-btn modal-confirm" onclick="confirmCancel()">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <script src="auth.js"></script>
@@ -55,26 +143,13 @@
             const target = new Date(expiresAt).getTime();
             countdownInterval = setInterval(() => {
                 const remaining = target - Date.now();
-                document.getElementById('countdown').textContent = formatTime(remaining);
+                const formatted = formatTime(remaining);
+                document.getElementById('timer-display').textContent = formatted;
                 if (remaining <= 0) {
                     clearInterval(countdownInterval);
-                    document.getElementById('countdown').textContent = '00:00';
-                    if (order) {
-                        order.status = 'TIMEOUT';
-                        renderOrder();
-                    }
+                    document.getElementById('timer-display').textContent = '00:00';
                 }
             }, 1000);
-        }
-
-        function renderOrder() {
-            if (!order) return;
-            document.getElementById('order-meta').innerHTML = `Order ${order.requestID} • Status: <strong>${order.status}</strong>`;
-            document.getElementById('account-no').textContent = order.bankDetails?.accountNo || '--';
-            document.getElementById('ifsc').textContent = order.bankDetails?.ifsc || '--';
-            document.getElementById('bank-name').textContent = order.bankDetails?.bankName || '--';
-            document.getElementById('holder-name').textContent = order.bankDetails?.holderName || '--';
-            if (order.expiresAt) startCountdown(order.expiresAt);
         }
 
         async function loadOrder() {
@@ -88,7 +163,12 @@
                 const data = await response.json();
                 if (data.success) {
                     order = data.order;
-                    renderOrder();
+                    document.getElementById('account-no').textContent = order.bankDetails?.accountNo || '5639101000353';
+                    document.getElementById('ifsc').textContent = order.bankDetails?.ifsc || 'BKID0005639';
+                    document.getElementById('bank-name').textContent = order.bankDetails?.bankName || 'IMPS';
+                    document.getElementById('holder-name').textContent = order.bankDetails?.holderName || 'Veerla Joji babu';
+                    document.getElementById('amount').textContent = (order.amount || 3690) + ' RS';
+                    if (order.expiresAt) startCountdown(order.expiresAt);
                     localStorage.setItem('pendingOrder', JSON.stringify(order));
                 }
             } catch (error) {
@@ -98,34 +178,47 @@
 
         async function submitProof() {
             const utr = document.getElementById('utr').value.trim();
-            const proof = document.getElementById('proof').value.trim();
-            if (!utr || !proof) {
-                alert('Please enter the UTR and screenshot details.');
+            const proofFile = document.getElementById('proof-image').files[0];
+            
+            if (!utr || !proofFile) {
+                alert('Please enter UTR and upload a proof image.');
                 return;
             }
-            try {
-                const response = await fetch(`/api/orders/${requestID}/submit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...addAuthHeader() },
-                    body: JSON.stringify({ utr, proofImage: proof })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    order = data.order;
-                    renderOrder();
-                    alert('Proof submitted. Waiting for admin approval.');
-                } else {
-                    alert(data.message || 'Unable to submit proof.');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const response = await fetch(`/api/orders/${requestID}/submit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...addAuthHeader() },
+                        body: JSON.stringify({ utr, proofImage: e.target.result })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        order = data.order;
+                        alert('Proof submitted successfully. Waiting for admin approval.');
+                        document.getElementById('utr').value = '';
+                        document.getElementById('proof-image').value = '';
+                    } else {
+                        alert(data.message || 'Unable to submit proof.');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert('Unable to submit proof.');
                 }
-            } catch (error) {
-                console.error(error);
-                alert('Unable to submit proof.');
-            }
+            };
+            reader.readAsDataURL(proofFile);
         }
 
-        async function cancelOrder() {
-            const confirmed = confirm('Are you sure you want to cancel this order?');
-            if (!confirmed) return;
+        function showCancelConfirm() {
+            document.getElementById('cancel-modal').classList.add('active');
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancel-modal').classList.remove('active');
+        }
+
+        async function confirmCancel() {
             try {
                 const response = await fetch(`/api/orders/${requestID}/cancel`, {
                     method: 'POST',
@@ -134,7 +227,9 @@
                 const data = await response.json();
                 if (data.success) {
                     order = data.order;
-                    renderOrder();
+                    alert('Order cancelled successfully.');
+                    closeCancelModal();
+                    window.location.href = 'deposit.html';
                 } else {
                     alert(data.message || 'Unable to cancel order.');
                 }
@@ -143,9 +238,13 @@
             }
         }
 
-        function copyText(id) {
+        function copyField(id) {
             const text = document.getElementById(id).textContent;
             navigator.clipboard.writeText(text).then(() => alert('Copied!'));
+        }
+
+        function goBack() {
+            window.location.href = 'deposit.html';
         }
 
         document.addEventListener('DOMContentLoaded', loadOrder);
