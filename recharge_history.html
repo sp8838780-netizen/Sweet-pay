@@ -1,138 +1,72 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Recharge History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* मोबाइल पर स्क्रीन एकदम फिक्स रखने के लिए */
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow-x: hidden;
-            background: #f9f9f9;
-            font-family: sans-serif;
-            padding-bottom: 20px;
-            touch-action: manipulation;
-        }
-        .header { background: #fff; padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; cursor: pointer; }
-        .filter-bar { display: flex; justify-content: space-around; background: #fff; padding: 15px 0; font-size: 13px; color: #666; border-bottom: 1px solid #eee; }
-        .filter-bar span { cursor: pointer; padding: 5px; }
-        .filter-bar span.active { color: #000; border-bottom: 2px solid #000; }
-        .notice { background: #ece1ff; margin: 10px; padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; }
-        .history-card { background: #fff; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .status-pill { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
-        
-        .success { color: #00bfa5; background: #e0f2f1; }
-        .cancelled { color: #ff5252; background: #ffebee; }
-        .timeout { color: #ff9100; background: #fff3e0; }
-        .in-payment { color: #2979ff; background: #e3f2fd; }
-        .pending-approval { color: #7e57c2; background: #f3e5f5; }
-        .pending { color: #7e57c2; background: #f3e5f5; }
+        .tab-active { border-bottom: 2px solid #000; font-weight: bold; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 p-4">
 
-    <div class="header" onclick="window.location.href='deposit.html'">&lt; Recharge History</div>
-    
-    <div class="filter-bar" id="filterBar">
-        <span onclick="filterData('All', event)" class="active">All</span>
-        <span onclick="filterData('In Payment', event)">In Payment</span>
-        <span onclick="filterData('Success', event)">Success</span>
-        <span onclick="filterData('Timeout', event)">Timeout</span>
-        <span onclick="filterData('Cancel', event)">Cancel</span>
+    <!-- Header -->
+    <div class="flex items-center mb-6">
+        <span onclick="history.back()" class="text-xl cursor-pointer">←</span>
+        <h1 class="mx-auto font-bold text-lg">Recharge History</h1>
     </div>
 
-    <div class="notice">🟡 Complete a task to earn Commission and Bonus</div>
+    <!-- Tabs -->
+    <div class="flex justify-between text-sm text-gray-500 mb-6 border-b pb-2">
+        <button onclick="filterOrders('All')" id="tab-All" class="tab-active">All</button>
+        <button onclick="filterOrders('In Payment')" id="tab-In Payment">In Payment</button>
+        <button onclick="filterOrders('Success')" id="tab-Success">Success</button>
+        <button onclick="filterOrders('Timeout')" id="tab-Timeout">Timeout</button>
+        <button onclick="filterOrders('Cancel')" id="tab-Cancel">Cancel</button>
+    </div>
 
-    <div id="historyList"></div>
+    <!-- Order List -->
+    <div id="historyList" class="space-y-4"></div>
 
-    <script src="auth.js"></script>
     <script>
-        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        let history = JSON.parse(localStorage.getItem('rechargeHistory') || '[]');
 
-        function formatStatus(status) {
-            const normalized = (status || '').toUpperCase();
-            if (normalized === 'IN_PAYMENT') return 'In Payment';
-            if (normalized === 'PENDING_APPROVAL') return 'Pending Approval';
-            if (normalized === 'SUCCESS') return 'Success';
-            if (normalized === 'TIMEOUT') return 'Timeout';
-            if (normalized === 'CANCELLED') return 'Cancelled';
-            return status || 'Pending';
-        }
+        function filterOrders(status) {
+            // टैब की स्टाइल बदलना
+            document.querySelectorAll('button').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById('tab-' + status).classList.add('tab-active');
 
-        function classForStatus(status) {
-            const normalized = (status || '').toUpperCase();
-            if (normalized === 'SUCCESS') return 'success';
-            if (normalized === 'TIMEOUT') return 'timeout';
-            if (normalized === 'CANCELLED') return 'cancelled';
-            if (normalized === 'PENDING_APPROVAL' || normalized === 'PENDING') return 'pending-approval';
-            return 'in-payment';
-        }
-
-        async function loadHistory() {
-            if (!requireAuth()) return;
-            try {
-                const response = await fetch('/api/my-payments', { headers: addAuthHeader() });
-                const data = await response.json();
-                const payments = (data.payments || []).map(order => ({
-                    amount: `${order.amount} RS`,
-                    status: formatStatus(order.status),
-                    income: (order.amount * 0.03).toFixed(2),
-                    quota: `+${(order.amount * 1.03).toFixed(2)}`,
-                    order: order.requestID
-                }));
-                const pendingOrder = JSON.parse(localStorage.getItem('pendingOrder') || 'null');
-                if (pendingOrder) {
-                    payments.unshift({
-                        amount: `${pendingOrder.amount} RS`,
-                        status: formatStatus(pendingOrder.status),
-                        income: (pendingOrder.amount * 0.03).toFixed(2),
-                        quota: `+${(pendingOrder.amount * 1.03).toFixed(2)}`,
-                        order: pendingOrder.requestID
-                    });
-                }
-                renderTransactions(payments);
-            } catch (error) {
-                console.error(error);
-                renderTransactions([]);
-            }
-        }
-
-        function renderTransactions(transactions) {
             const list = document.getElementById('historyList');
-            list.innerHTML = '';
-            transactions.forEach(t => {
-                const classStatus = classForStatus(t.status);
-                list.innerHTML += `
-                    <div class="history-card">
+            let filtered = (status === 'All') ? history : history.filter(o => o.status === status);
+
+            list.innerHTML = filtered.map(o => `
+                <div class="bg-white p-4 rounded-lg shadow-sm border ${o.status === 'In Payment' && !o.utr ? 'cursor-pointer' : ''}" 
+                     onclick="${o.status === 'In Payment' && !o.utr ? `window.location.href='task-detail.html?amount=${o.amount}'` : ''}">
+                    
+                    <div class="flex justify-between items-center mb-2">
                         <div>
-                            <strong>${t.amount}</strong> <span class="status-pill ${classStatus}">${t.status}</span><br>
-                            <small style="color: #666;">Income ${t.income} | Quota ${t.quota}</small>
+                            <span class="font-bold text-lg">${o.amount} RS</span>
+                            <span class="ml-2 text-xs font-bold ${getColor(o.status)}">${o.status}</span>
                         </div>
-                        <div style="font-size: 12px; text-align: right; color: #666;">OrderNo: ${t.order} &gt;</div>
+                        ${o.utr ? `<span class="text-xs">UTR:${o.utr}</span>` : '<span class="text-xl">›</span>'}
                     </div>
-                `;
-            });
+                    
+                    <div class="flex text-xs text-gray-500">
+                        <span class="mr-6">Income <br> <b>${(o.amount * 0.04).toFixed(0)}</b></span>
+                        <span>Quota <br> <b class="text-teal-600">+${(o.amount * 1.04).toFixed(0)}</b></span>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function filterData(status, event) {
-            if (event) {
-                document.querySelectorAll('.filter-bar span').forEach(el => el.classList.remove('active'));
-                event.target.classList.add('active');
-            }
-            const list = document.getElementById('historyList');
-            list.innerHTML = '';
-            const activeStatus = status || 'All';
-            const transactions = window.allTransactions || [];
-            const filtered = activeStatus === 'All' ? transactions : transactions.filter(t => t.status === activeStatus || t.status === activeStatus.replace('Cancelled', 'Cancelled'));
-            renderTransactions(filtered);
+        function getColor(status) {
+            if (status === 'Success') return 'text-teal-500';
+            if (status === 'In Payment') return 'text-orange-500';
+            if (status === 'Cancel') return 'text-red-500';
+            return 'text-gray-500';
         }
 
-        window.allTransactions = [];
-        document.addEventListener('DOMContentLoaded', loadHistory);
+        filterOrders('All');
     </script>
 </body>
 </html>

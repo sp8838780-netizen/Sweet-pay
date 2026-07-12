@@ -2,302 +2,154 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Deposit</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #000; padding-bottom: 100px; }
-        .header { padding: 16px 20px; font-weight: 700; font-size: 20px; border-bottom: 1px solid #eee; }
-        .tabs { display: flex; padding: 0; gap: 30px; font-weight: 600; font-size: 16px; border-bottom: 1px solid #eee; padding: 0 20px; }
-        .tab { color: #999; cursor: pointer; padding: 16px 0; position: relative; border: none; background: none; }
-        .tab.active { color: #000; }
-        .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #000; }
+        body { background-color: #ffffff; color: #000000; font-family: sans-serif; padding-bottom: 80px; }
+        .tab-active { border-bottom: 2px solid #000000; font-weight: 800; color: #000; }
+        .tab-inactive { color: #a0a0a0; font-weight: 600; }
+        .buy-btn { background: #000000; color: #ffffff; padding: 6px 24px; border-radius: 8px; font-weight: bold; }
         
-        .inr-section { display: none; }
-        .inr-section.active { display: block; }
-        
-        .vip-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; font-weight: 600; font-size: 14px; color: #999; }
-        .vip-header .title { color: #000; }
-        
-        .vip-nodes { display: flex; justify-content: space-between; gap: 8px; padding: 16px 20px; align-items: center; }
-        .vip-node { width: 40px; height: 40px; background: #6b7d99; color: #fff; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
-        .vip-node strong { font-size: 13px; }
-        .vip-node small { font-size: 9px; }
-        .vip-reward { text-align: center; font-size: 13px; margin-top: 8px; padding: 0 20px; }
-        .vip-reward .green { color: #4caf50; font-weight: 600; }
-        .vip-reward .orange { color: #ff9800; font-weight: 600; }
-        
-        .tutorial-toggle { display: flex; align-items: center; gap: 6px; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; background: none; }
-        .tutorial-toggle::before { content: '▶'; display: inline-block; transition: transform 0.3s; margin-right: 4px; }
-        .tutorial-toggle.open::before { transform: rotate(90deg); }
-        
-        .tutorial-content { display: none; padding: 0 20px 16px 20px; }
-        .tutorial-content.open { display: block; }
-        
-        .filter-row { display: flex; align-items: center; gap: 8px; padding: 12px 20px; flex-wrap: wrap; }
-        .filter-row select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
-        .filter-row input { width: 50px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; }
-        .filter-row button { padding: 6px 12px; background: #000; color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
-        
-        .orders-list { }
-        .order-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
-        .order-amount { flex: 1; }
-        .order-amount strong { font-size: 15px; font-weight: 700; display: block; margin-bottom: 4px; }
-        .order-meta { font-size: 12px; color: #999; }
-        .order-meta span { margin-right: 12px; }
-        .buy-btn { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
-        
-        .usdt-section { display: none; padding: 20px; }
-        .usdt-section.active { display: block; }
-        
-        .qr-code-box { display: flex; justify-content: center; padding: 20px 0; }
-        #qr-code { display: flex; justify-content: center; }
-        
-        .wallet-box { background: #f9f9f9; padding: 16px; border-radius: 10px; margin: 16px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-        .wallet-box small { display: block; color: #999; font-size: 12px; margin-bottom: 4px; }
-        .wallet-box strong { display: block; word-break: break-all; font-size: 13px; font-weight: 600; flex: 1; }
-        .copy-wallet-btn { padding: 8px 12px; background: #fff; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        
-        .info-box { background: #f9f9f9; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 13px; text-align: center; }
-        
-        .calculator-section { margin: 16px 0; }
-        .calculator-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-        .calculator-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
-        .calculator-result { font-size: 12px; color: #666; line-height: 1.6; }
-        
-        .navbar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #f0f0f0; z-index: 100; }
-        .nav-item { text-align: center; font-size: 11px; color: #888; text-decoration: none; }
-        .nav-item.active { color: #000; font-weight: 700; }
+        /* Navigation Styles */
+        .navbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #eeeeee;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            font-size: 10px;
+            text-align: center;
+            z-index: 1000;
+        }
+        .nav-item { text-decoration: none; color: #a0a0a0; font-weight: bold; }
     </style>
 </head>
-<body>
-    <div class="header">Deposit</div>
-    
-    <div class="tabs">
-        <button class="tab active" id="inr-tab" onclick="showTab('inr')">INR</button>
-        <button class="tab" id="usdt-tab" onclick="showTab('usdt')">USDT</button>
+<body class="p-4">
+
+    <!-- Header Tabs -->
+    <div class="flex space-x-6 mb-4 text-xl">
+        <button id="inrTab" onclick="switchTab('inr')" class="tab-active">INR</button>
+        <button id="usdtTab" onclick="switchTab('usdt')" class="tab-inactive">USDT</button>
     </div>
 
     <!-- INR Section -->
-    <div id="inr-section" class="inr-section active">
-        <div class="vip-header">
-            <span class="title">Payment Order</span>
-            <span>VIP</span>
+    <div id="inrSection">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-gray-500">Payment Order <span class="text-black ml-1">VIP</span></h2>
+            <button onclick="refreshOrders()" class="bg-black text-white px-6 py-1 rounded font-bold text-sm">Refresh</button>
         </div>
         
-        <div class="vip-nodes">
-            <div class="vip-node"><strong>5</strong><small>+₹10</small></div>
-            <div class="vip-node"><strong>10</strong><small>+₹30</small></div>
-            <div class="vip-node"><strong>20</strong><small>+₹45</small></div>
-            <div class="vip-node"><strong>30</strong><small>+₹70</small></div>
-            <div class="vip-node"><strong>40</strong><small>+₹95</small></div>
+        <!-- Progress Bar -->
+        <div class="mb-6 border-b pb-4">
+            <div class="flex justify-between text-xs text-gray-400 mb-1"><span>+₹10</span><span>+₹30</span><span>+₹45</span><span>+₹70</span><span>+₹95</span></div>
+            <div class="flex items-center justify-between bg-gray-100 p-2 rounded-full"><span>5</span><span>10</span><span>20</span><span>30</span><span>40</span></div>
+            <p class="text-sm font-bold mt-2">5 more for <span class="text-yellow-600">10</span> reward</p>
+            <a href="#" class="text-sm flex items-center mt-1">▶ <span class="ml-1">How Buy Quota?</span></a>
         </div>
-        
-        <div class="vip-reward">
-            <span class="green">5</span> more for <span class="orange">10</span> reward
+
+        <div class="flex space-x-2 mb-4">
+            <select class="border p-2 w-1/3 text-sm"><option>From low to high</option></select>
+            <input id="minVal" type="number" class="border p-2 w-1/4 text-sm relative z-50" placeholder="Min">
+            <input id="maxVal" type="number" class="border p-2 w-1/4 text-sm relative z-50" placeholder="Max">
         </div>
-        
-        <button class="tutorial-toggle" onclick="toggleTutorial(this)">
-            How Buy Quota?
-        </button>
-        
-        <div class="tutorial-content">
-            <p style="font-size: 13px; color: #666; margin: 0; padding-bottom: 12px;">
-                Click on any order amount to begin the payment process. You'll receive a 4% bonus on each purchase.
-            </p>
-        </div>
-        
-        <div class="filter-row">
-            <select id="sortOrder" onchange="filterOrders()">
-                <option>From low to high</option>
-                <option>From high to low</option>
-            </select>
-            <input id="minVal" type="number" placeholder="Min" onchange="filterOrders()">
-            <span>-</span>
-            <input id="maxVal" type="number" placeholder="Max" onchange="filterOrders()">
-            <button onclick="filterOrders()">Refresh</button>
-        </div>
-        
-        <div class="orders-list" id="orders-list"></div>
+        <div id="orderList" class="space-y-4"></div>
     </div>
 
     <!-- USDT Section -->
-    <div id="usdt-section" class="usdt-section">
-        <div class="qr-code-box" id="qr-code"></div>
-        
-        <button class="tutorial-toggle" onclick="toggleTutorial(this)">
-            How Buy Quota?
-        </button>
-        
-        <div class="tutorial-content">
-            <p style="font-size: 13px; color: #666; margin: 0; padding-bottom: 12px;">
-                Send USDT to the wallet address below. After 3-5 minutes, your deposit will arrive.
-            </p>
-        </div>
-        
-        <div class="wallet-box">
-            <div style="flex: 1;">
-                <small>Wallet Address (TRC-20)</small>
-                <strong id="wallet-addr">TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ</strong>
-            </div>
-            <button class="copy-wallet-btn" onclick="copyWallet()">📋</button>
-        </div>
-        
-        <div class="info-box">❗ You pay network fee.</div>
-        
-        <div class="calculator-section">
-            <div class="calculator-header">
-                <span>Calculator</span>
-                <span>Ratio: 1 USDT = 105 INR</span>
-            </div>
-            <input type="number" class="calculator-input" placeholder="Enter USDT" onkeyup="calcUSDT(this.value)">
-            <div class="calculator-result">
-                Estimated bonus: <span id="bonus">0</span> (2%) INR<br>
-                <strong>Total: <span id="total">0</span> INR</strong>
+    <div id="usdtSection" class="hidden text-center">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TKsLy67nSx2SMk8jg6KNkRdXtVAMwZ" class="mx-auto w-32 my-6">
+        <a href="#" class="text-sm flex items-center mb-4">▶ <span class="ml-1">How Buy Quota?</span></a>
+        <div class="border p-4 rounded-lg text-left">
+            <p class="text-gray-500 text-sm">Wallet Address (TRC-20)</p>
+            <div class="flex justify-between font-bold my-2">
+                <span id="addr">TKsLy67nSx2SMk8jg6KNkRdXtVAMwZ</span>
+                <button onclick="copyAddr()" class="text-xl">📋</button>
             </div>
         </div>
-        
-        <p style="font-size: 12px; color: #999; margin-top: 20px;">
-            * After the recharge is completed, please wait 3-5 minutes for the deposit to arrive.
-        </p>
+        <div class="bg-gray-50 p-2 my-4 text-xs font-bold text-left">❗ You pay network fee.</div>
+        <div class="text-left mt-6">
+            <p class="font-bold">Calculator <span class="ml-10 text-sm font-normal">Ratio: 1 USDT = 105 INR</span></p>
+            <input type="number" id="usdtInput" oninput="calcUSDT()" class="w-full border p-3 mt-2 rounded" placeholder="0">
+            <p class="mt-2 font-bold">Estimated bonus: <span id="bonusRes">0</span>(2%) INR</p>
+            <p class="font-bold text-lg">Total: <span id="totalRes">0</span> INR</p>
+        </div>
+        <p class="text-xs mt-6 text-gray-500 text-left">* After the recharge is completed, please wait 3-5 minutes for the deposit to arrive.</p>
     </div>
 
+    <!-- Navigation Bar -->
     <div class="navbar">
         <a href="dashboard.html" class="nav-item">🏠<br>Home</a>
-        <a href="deposit.html" class="nav-item active">↔️<br>Deposit</a>
-        <a href="bank.html" class="nav-item">💼<br>Bank</a>
+        <a href="deposit.html" class="nav-item" style="color: #000;">💰<br>Deposit</a>
+        <a href="bank.html" class="nav-item">🏦<br>Bank</a>
         <a href="team.html" class="nav-item">👥<br>Team</a>
-        <a href="profile.html" class="nav-item">⚫<br>Me</a>
+        <a href="profile.html" class="nav-item">👤<br>Profile</a>
     </div>
 
-    <script src="auth.js"></script>
     <script>
-        if (!requireAuth()) return;
+        // P2P लॉजिक बैकग्राउंड के लिए
+        const sellers = ["Rahul", "Amit", "Vijay", "Priya"];
+        let orders = Array.from({length: 1000}, () => {
+            let val = Math.random() < 0.7 ? (Math.random() * 14800 + 200) : (Math.random() * 35000 + 15001);
+            return { amount: Math.floor(val) };
+        }).sort((a,b) => a.amount - b.amount);
 
-        const demoOrders = [];
-        function generateDemoOrders() {
-            for (let i = 1; i <= 2000; i++) {
-                let amount;
-                if (i <= 1000) {
-                    amount = 200 + (i * 24.8);
-                } else {
-                    amount = 25000 + ((i - 1000) * 25);
-                }
-                demoOrders.push(Math.round(amount * 100) / 100);
-            }
+        // P2P वाला createOrder फंक्शन
+        function createOrder(amount) {
+            let history = JSON.parse(localStorage.getItem('rechargeHistory') || '[]');
+            history.unshift({ 
+                amount: amount, 
+                utr: "", 
+                status: "In Payment", 
+                time: new Date().toLocaleString(),
+                seller: sellers[Math.floor(Math.random() * sellers.length)] 
+            });
+            localStorage.setItem('rechargeHistory', JSON.stringify(history));
+            window.location.href = 'task-detail.html?amount=' + amount;
         }
 
-        function renderOrders(orders) {
-            const list = document.getElementById('orders-list');
-            list.innerHTML = orders.map(amount => `
-                <div class="order-item">
-                    <div class="order-amount">
-                        <strong>${amount.toFixed(0)} INR</strong>
-                        <div class="order-meta">
-                            <span>Income ${(amount * 0.04).toFixed(2)}</span>
-                            <span>Quota +${(amount * 1.04).toFixed(2)}</span>
-                        </div>
+        function render(data) {
+            document.getElementById('orderList').innerHTML = data.map(o => `
+                <div class="flex justify-between items-center border-b pb-4">
+                    <div>
+                        <h2 class="font-bold text-lg">${o.amount} INR</h2>
+                        <p class="text-sm">Income <span class="font-bold">4%</span> <span class="text-teal-600 font-bold ml-2">+${(o.amount*0.04).toFixed(0)}</span></p>
                     </div>
-                    <button class="buy-btn" onclick="startOrder(${amount.toFixed(0)})">Buy</button>
+                    <button onclick="createOrder(${o.amount})" class="buy-btn">Buy</button>
                 </div>
             `).join('');
         }
 
-        function filterOrders() {
-            const sortOrder = document.getElementById('sortOrder').value;
-            const minVal = parseInt(document.getElementById('minVal').value) || 0;
-            const maxVal = parseInt(document.getElementById('maxVal').value) || 999999;
-            
-            let filtered = demoOrders.filter(a => a >= minVal && a <= maxVal);
-            if (sortOrder.includes('high to low')) {
-                filtered.reverse();
-            }
-            renderOrders(filtered);
+        function refreshOrders() {
+            let min = parseInt(document.getElementById('minVal').value) || 0;
+            let max = parseInt(document.getElementById('maxVal').value) || 50000;
+            render(orders.filter(o => o.amount >= min && o.amount <= max));
         }
 
-        function startOrder(amount) {
-            const token = getStoredToken();
-            if (!token) {
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            fetch('/api/submit-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...addAuthHeader() },
-                body: JSON.stringify({ amount })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success && data.order) {
-                    localStorage.setItem('pendingOrder', JSON.stringify(data.order));
-                    window.location.href = `order_details.html?requestID=${data.order.requestID}`;
-                } else {
-                    alert(data.message || 'Unable to create order');
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Error creating order');
-            });
+        function copyAddr() {
+            navigator.clipboard.writeText(document.getElementById('addr').innerText);
+            alert("Address Copied!");
         }
 
-        function showTab(tab) {
-            // Update tab buttons
-            document.getElementById('inr-tab').classList.remove('active');
-            document.getElementById('usdt-tab').classList.remove('active');
-            
-            if (tab === 'inr') {
-                document.getElementById('inr-tab').classList.add('active');
-                document.getElementById('inr-section').classList.add('active');
-                document.getElementById('usdt-section').classList.remove('active');
-                // Render orders when INR tab is shown
-                renderOrders(demoOrders);
-            } else {
-                document.getElementById('usdt-tab').classList.add('active');
-                document.getElementById('inr-section').classList.remove('active');
-                document.getElementById('usdt-section').classList.add('active');
-                // Generate QR code when USDT tab is shown (only once)
-                if (document.getElementById('qr-code').innerHTML === '') {
-                    setTimeout(() => {
-                        new QRCode(document.getElementById('qr-code'), {
-                            text: 'TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ',
-                            width: 180,
-                            height: 180,
-                            colorDark: '#000000',
-                            colorLight: '#ffffff'
-                        });
-                    }, 100);
-                }
-            }
+        function calcUSDT() {
+            let usdt = document.getElementById('usdtInput').value;
+            let inr = usdt * 105;
+            document.getElementById('bonusRes').innerText = (inr * 0.02).toFixed(2);
+            document.getElementById('totalRes').innerText = (inr + (inr * 0.02)).toFixed(2);
         }
 
-        function toggleTutorial(btn) {
-            btn.classList.toggle('open');
-            btn.nextElementSibling.classList.toggle('open');
+        function switchTab(t) {
+            document.getElementById('inrSection').classList.toggle('hidden', t !== 'inr');
+            document.getElementById('usdtSection').classList.toggle('hidden', t !== 'usdt');
+            document.getElementById('inrTab').className = t === 'inr' ? 'tab-active' : 'tab-inactive';
+            document.getElementById('usdtTab').className = t === 'usdt' ? 'tab-active' : 'tab-inactive';
         }
-
-        function copyWallet() {
-            const addr = document.getElementById('wallet-addr').textContent;
-            navigator.clipboard.writeText(addr).then(() => alert('Wallet address copied!'));
-        }
-
-        function calcUSDT(val) {
-            const amount = parseFloat(val) || 0;
-            const total = amount * 105;
-            const bonus = total * 0.02;
-            document.getElementById('bonus').textContent = bonus.toFixed(2);
-            document.getElementById('total').textContent = total.toFixed(2);
-        }
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', function() {
-            // Generate demo orders
-            generateDemoOrders();
-            // Render orders immediately on page load for INR tab
-            renderOrders(demoOrders);
-        });
+        
+        render(orders);
     </script>
 </body>
 </html>

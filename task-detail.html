@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #f9f9f9; font-family: sans-serif; }
+        .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .app-btn { display: flex; flex-direction: column; align-items: center; padding: 10px; background: white; border: 1px solid #eee; border-radius: 10px; font-size: 10px; font-weight: bold; }
+        .app-logo { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header -->
+    <div class="flex items-center mb-4">
+        <span onclick="history.back()" class="text-xl cursor-pointer">←</span>
+        <h1 class="mx-auto font-bold">Task Detail</h1>
+    </div>
+
+    <!-- Timer -->
+    <div class="bg-pink-100 text-red-900 text-center py-2 rounded mb-4 font-bold" id="timerDisplay">00:29:10</div>
+
+    <!-- Details Section -->
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+        <div class="detail-row"><span>Bank Card Number</span><span class="font-bold cursor-pointer" onclick="copyText('20401036509')">20401036509 📋</span></div>
+        <div class="detail-row"><span>Bank Name</span><span class="font-bold cursor-pointer" onclick="copyText('IMPS')">IMPS 📋</span></div>
+        <div class="detail-row"><span>IFSC</span><span class="font-bold cursor-pointer" onclick="copyText('FINO0009001')">FINO0009001 📋</span></div>
+        <div class="detail-row"><span>Payee Name</span><span class="font-bold cursor-pointer" onclick="copyText('Noor Bhanu Begum')">Noor Bhanu Begum 📋</span></div>
+        <!-- यहाँ अमाउंट दिखेगा जो बाय बटन से आएगा -->
+        <div class="detail-row text-orange-600"><span>Money</span><span class="font-bold cursor-pointer" id="moneyDisplay" onclick="copyText(document.getElementById('moneyDisplay').innerText)">Loading... 📋</span></div>
+    </div>
+
+    <!-- Payment Apps (सिर्फ लोगो और ऐप लिंक) -->
+    <div class="grid grid-cols-4 gap-3 mt-6">
+        <div onclick="window.location.href='phonepe://'" class="app-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/PhonePe_logo.svg/200px-PhonePe_logo.svg.png" class="app-logo">PhonePe</div>
+        <div onclick="window.location.href='paytmmp://'" class="app-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo.svg/200px-Paytm_Logo.svg.png" class="app-logo">Paytm</div>
+        <div onclick="window.location.href='gpay://'" class="app-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/200px-Google_Pay_Logo.svg.png" class="app-logo">GPay</div>
+        <div onclick="window.location.href='mobikwik://'" class="app-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/MobiKwik_Logo.svg/200px-MobiKwik_Logo.svg.png" class="app-logo">MobiKwik</div>
+    </div>
+    <p class="text-red-600 text-[10px] text-center mt-2 font-bold">⚠️ आप सिर्फ इन ऐप्स से ही पेमेंट करें, अन्यथा आपका पेमेंट सक्सेस नहीं होगा!</p>
+    <p class="text-red-600 text-[10px] text-center mt-2 font-bold">⚠️ Please make payment only through these apps, otherwise your payment will not be successful!</p>
+
+    <!-- UTR & Upload -->
+    <div class="mt-6">
+        <input type="text" id="utrInput" class="w-full border p-3 rounded mb-2" placeholder="UTR(UPI Ref.ID)">
+        <p class="text-sm mb-2">Please must upload proof of payment</p>
+        <input type="file" id="fileInput" class="hidden" onchange="previewFile()">
+        <div onclick="document.getElementById('fileInput').click()" class="w-20 h-20 border-2 border-dashed flex items-center justify-center mb-4 cursor-pointer overflow-hidden bg-gray-100" id="previewArea">📷</div>
+    </div>
+
+    <button onclick="submitTask()" class="w-full bg-black text-white py-3 rounded-lg font-bold">Submit</button>
+    <button onclick="showConfirm()" class="w-full bg-red-600 text-white py-3 rounded-lg mt-2 font-bold">Cancel</button>
+
+    <script>
+        // सीधे URL से अमाउंट उठाना
+        const urlParams = new URLSearchParams(window.location.search);
+        const amount = urlParams.get('amount') || "0";
+        document.getElementById('moneyDisplay').innerText = amount + " RS";
+
+        function copyText(text) { navigator.clipboard.writeText(text); alert("Copied!"); }
+        
+        function previewFile() {
+            const file = document.getElementById('fileInput').files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => document.getElementById('previewArea').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+            reader.readAsDataURL(file);
+        }
+
+        function submitTask() {
+            if(!document.getElementById('utrInput').value || !document.getElementById('fileInput').files[0]) {
+                alert("Error: Please provide UTR and Payment Screenshot!");
+                return;
+            }
+            window.location.href = 'recharge_history.html';
+        }
+
+        // टाइमर
+        let time = 1750;
+        setInterval(() => {
+            if(time <= 0) { document.getElementById('timerDisplay').innerText = "Time Out"; return; }
+            time--;
+            document.getElementById('timerDisplay').innerText = `00:${Math.floor(time/60).toString().padStart(2,'0')}:${(time%60).toString().padStart(2,'0')}`;
+        }, 1000);
+        
+        function showConfirm() { if(confirm("Are you sure you want to cancel this order?")) window.location.href = 'deposit.html'; }
+    </script>
+</body>
+</html>
