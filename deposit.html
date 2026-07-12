@@ -25,6 +25,9 @@
         .wallet-box { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin: 15px 0; display: flex; justify-content: space-between; align-items: center; }
         .info-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0; }
         .calc-input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin: 10px 0; }
+        .navbar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #f0f0f0; }
+        .nav-item { text-align: center; font-size: 11px; color: #888; text-decoration: none; }
+        .active { color: #000; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -40,9 +43,9 @@
             <div class="vip-node">5</div><div class="vip-node">10</div><div class="vip-node">20</div><div class="vip-node">30</div><div class="vip-node">40</div>
         </div>
         <div class="deposit-box">
-            <strong>Secure P2P Match</strong>
+            <strong>Bank Details Order</strong>
             <input id="deposit-amount" type="number" placeholder="Enter amount (min ₹200)" style="width:100%; margin: 10px 0; box-sizing: border-box;">
-            <button onclick="matchAndSubmit()" style="width:100%; background:#1e90ff; color:#fff; border:none; padding:12px; border-radius:8px;">Match & Submit Deposit</button>
+            <button onclick="matchAndSubmit()" style="width:100%; background:#1e90ff; color:#fff; border:none; padding:12px; border-radius:8px;">Create Order</button>
         </div>
         <div id="match-result" class="match-card" style="display:none;"></div>
         <div class="filter-row">
@@ -68,11 +71,21 @@
         <p style="font-size:12px; color:#888; margin-top:20px;">* After the recharge is completed, please wait 3-5 minutes for the deposit to arrive.</p>
     </div>
 
+    <div class="navbar">
+        <a href="dashboard.html" class="nav-item">🏠<br>Home</a>
+        <a href="deposit.html" class="nav-item active">↔️<br>Deposit</a>
+        <a href="bank.html" class="nav-item">💼<br>Bank</a>
+        <a href="team.html" class="nav-item">👥<br>Team</a>
+        <a href="profile.html" class="nav-item">⚫<br>Me</a>
+    </div>
+
+    <script src="auth.js"></script>
     <script>
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'login.html';
+        if (!requireAuth()) {
+            return;
         }
+
+        const token = localStorage.getItem('token');
 
         let allOrders = [];
         for (let i = 1; i <= 2000; i++) {
@@ -111,8 +124,8 @@
             resultBox.innerHTML = 'Matching a seller account...';
 
             try {
-                const matchRes = await fetch(`/api/p2p/match-account?amount=${amount}`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                const matchRes = await fetch(`/api/bank-details/match-account?amount=${amount}`, {
+                    headers: addAuthHeader()
                 });
                 const matchData = await matchRes.json();
 
@@ -125,11 +138,17 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
+                        ...addAuthHeader()
                     },
-                    body: JSON.stringify({ amount, sellerID: matchData.sellerID, utr: `UTR${Date.now()}`, proofImage: 'upload-pending' })
+                    body: JSON.stringify({ amount, sellerID: matchData.sellerID })
                 });
                 const submitData = await submitRes.json();
+
+                if (submitData.success && submitData.order) {
+                    localStorage.setItem('pendingOrder', JSON.stringify(submitData.order));
+                    window.location.href = `order_details.html?requestID=${submitData.order.requestID}`;
+                    return;
+                }
 
                 resultBox.innerHTML = `
                     <strong>Matched seller:</strong> ${matchData.sellerID}<br>

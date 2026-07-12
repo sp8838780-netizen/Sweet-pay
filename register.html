@@ -47,9 +47,9 @@
         <a href="login.html" class="login-link">Already have an account? Login</a>
     </div>
 
+    <script src="auth.js"></script>
     <script>
-        const token = localStorage.getItem('token');
-        if (token) {
+        if (isSessionValid()) {
             window.location.href = 'dashboard.html';
         }
 
@@ -88,10 +88,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('userID', data.userID);
-                    localStorage.setItem('myReferralCode', data.myReferralCode);
-                    localStorage.setItem('userData', JSON.stringify(data.user || {}));
+                    saveAuth(data);
                     alert('Registration successful!\nYour unique ID: ' + data.userID);
                     window.location.href = 'profile.html';
                 } else {

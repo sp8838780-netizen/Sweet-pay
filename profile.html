@@ -29,7 +29,7 @@
     <div class="header-top">
         <div class="edit-profile">👤 Profile</div>
     </div>
-    <div class="user-id">ID: <span id="user-id">Loading...</span></div>
+    <div class="user-id">ID: <span id="user-id">Loading...</span> <button id="copy-user-id" onclick="copyUserId()" style="margin-left:8px; padding:4px 8px; border-radius:6px; border:1px solid #ddd; background:#fff;">Copy</button></div>
 
     <div class="quota-section">
         <div class="quota-title">⚪ Balance</div>
@@ -62,16 +62,21 @@
         <a href="profile.html" class="nav-item active">⚫<br>Me</a>
     </div>
 
+    <script src="auth.js"></script>
     <script>
+        function copyUserId() {
+            const userId = document.getElementById('user-id').textContent.replace('Loading...', '').trim();
+            if (!userId || userId === 'Loading...') return;
+            navigator.clipboard.writeText(userId).then(() => alert('User ID copied!'));
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = 'login.html';
+            if (!requireAuth()) {
                 return;
             }
 
             try {
-                const response = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
+                const response = await fetch('/api/me', { headers: addAuthHeader() });
                 const data = await response.json();
                 if (data.success) {
                     const user = data.user || {};
@@ -85,12 +90,7 @@
         });
 
         function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userID');
-            localStorage.removeItem('myReferralCode');
-            localStorage.removeItem('userData');
-            alert('Signed Out!');
-            window.location.href = 'login.html';
+            logout();
         }
     </script>
 </body>

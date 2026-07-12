@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Order Details</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f8f8f8; color: #111; padding-bottom: 30px; }
+        .card { margin: 16px; padding: 16px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+        .muted { color: #666; font-size: 13px; }
+        input, button, textarea { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; }
+        button { background: #000; color: #fff; border: none; cursor: pointer; }
+        .secondary { background: #f2f2f2; color: #111; }
+        .timer { font-size: 24px; font-weight: 700; color: #e53935; margin: 10px 0; }
+        .row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .copy-btn { width: auto; padding: 8px 12px; float: right; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="title">Bank Details</div>
+        <div id="order-meta" class="muted">Loading order...</div>
+        <div class="timer" id="countdown">30:00</div>
+        <div class="row"><strong>Account No</strong><span id="account-no">--</span><button class="copy-btn" onclick="copyText('account-no')">Copy</button></div>
+        <div class="row"><strong>IFSC</strong><span id="ifsc">--</span><button class="copy-btn" onclick="copyText('ifsc')">Copy</button></div>
+        <div class="row"><strong>Bank</strong><span id="bank-name">--</span></div>
+        <div class="row"><strong>Holder</strong><span id="holder-name">--</span></div>
+    </div>
+
+    <div class="card">
+        <div class="title">Submit Payment Proof</div>
+        <input id="utr" placeholder="Enter UTR">
+        <textarea id="proof" rows="4" placeholder="Paste screenshot details or upload note"></textarea>
+        <button onclick="submitProof()">Submit</button>
+        <button class="secondary" onclick="cancelOrder()" style="margin-top:8px;">Cancel</button>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const requestID = params.get('requestID');
+        let order = null;
+        let countdownInterval = null;
+
+        function formatTime(ms) {
+            const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function startCountdown(expiresAt) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const target = new Date(expiresAt).getTime();
+            countdownInterval = setInterval(() => {
+                const remaining = target - Date.now();
+                document.getElementById('countdown').textContent = formatTime(remaining);
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('countdown').textContent = '00:00';
+                    if (order) {
+                        order.status = 'TIMEOUT';
+                        renderOrder();
+                    }
+                }
+            }, 1000);
+        }
+
+        function renderOrder() {
+            if (!order) return;
+            document.getElementById('order-meta').innerHTML = `Order ${order.requestID} • Status: <strong>${order.status}</strong>`;
+            document.getElementById('account-no').textContent = order.bankDetails?.accountNo || '--';
+            document.getElementById('ifsc').textContent = order.bankDetails?.ifsc || '--';
+            document.getElementById('bank-name').textContent = order.bankDetails?.bankName || '--';
+            document.getElementById('holder-name').textContent = order.bankDetails?.holderName || '--';
+            if (order.expiresAt) startCountdown(order.expiresAt);
+        }
+
+        async function loadOrder() {
+            if (!requireAuth()) return;
+            if (!requestID) {
+                window.location.href = 'deposit.html';
+                return;
+            }
+            try {
+                const response = await fetch(`/api/orders/${requestID}`, { headers: addAuthHeader() });
+                const data = await response.json();
+                if (data.success) {
+                    order = data.order;
+                    renderOrder();
+                    localStorage.setItem('pendingOrder', JSON.stringify(order));
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function submitProof() {
+            const utr = document.getElementById('utr').value.trim();
+            const proof = document.getElementById('proof').value.trim();
+            if (!utr || !proof) {
+                alert('Please enter the UTR and screenshot details.');
+                return;
+            }
+            try {
+                const response = await fetch(`/api/orders/${requestID}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...addAuthHeader() },
+                    body: JSON.stringify({ utr, proofImage: proof })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    order = data.order;
+                    renderOrder();
+                    alert('Proof submitted. Waiting for admin approval.');
+                } else {
+                    alert(data.message || 'Unable to submit proof.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Unable to submit proof.');
+            }
+        }
+
+        async function cancelOrder() {
+            const confirmed = confirm('Are you sure you want to cancel this order?');
+            if (!confirmed) return;
+            try {
+                const response = await fetch(`/api/orders/${requestID}/cancel`, {
+                    method: 'POST',
+                    headers: addAuthHeader()
+                });
+                const data = await response.json();
+                if (data.success) {
+                    order = data.order;
+                    renderOrder();
+                } else {
+                    alert(data.message || 'Unable to cancel order.');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function copyText(id) {
+            const text = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(text).then(() => alert('Copied!'));
+        }
+
+        document.addEventListener('DOMContentLoaded', loadOrder);
+    </script>
+</body>
+</html>

@@ -45,13 +45,14 @@
         <a href="profile.html" class="nav-item">👤<br>Profile</a>
     </div>
 
+    <script src="auth.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = 'login.html';
+            if (!requireAuth()) {
                 return;
             }
+
+            const token = localStorage.getItem('token');
 
             const myRefCode = localStorage.getItem('myReferralCode');
             const baseUrl = window.location.origin + '/regist';
@@ -66,7 +67,7 @@
 
         async function fetchTeamData(refCode, token) {
             try {
-                const response = await fetch(`/api/team-details?refCode=${refCode}`, { headers: { Authorization: `Bearer ${token}` } });
+                const response = await fetch(`/api/team-details?refCode=${refCode}`, { headers: addAuthHeader() });
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('total-commission').innerText = `₹ ${Number(data.totalCommission || 0).toFixed(2)}`;

@@ -1,8 +1,8 @@
 [
   {
     "mobile": "9862713447",
-    "passwordHash": "34c102b0f6471697c33b4a6a913b75202d41243db9b74e1e7f5984e5e8b230f3c204805d2e0a8283c1b6aafac3ad7526172fafc50773aa1d1b0e100bb117cd9d",
-    "passwordSalt": "e8e1423aca80738e71fbfda6fc48df50",
+    "passwordHash": "99a468ba04454e79e8ceb90e97cd8cd747520d23f6516923fffc9f3e60916ab20ea48dd08a78fafc5066f83ba4593a20d2591be2bfd627b2c0e0194123a48f69",
+    "passwordSalt": "c151283cf68d5994f44cb280171549c1",
     "myReferralCode": "REFMASTER01",
     "userID": "IDMASTER01",
     "role": "ADMIN",
@@ -19,6 +19,7 @@
       "bankStatus": "ON"
     },
     "status": "ON",
-    "_id": "User-1783801653030-d9fcafff5e0b68"
+    "_id": "User-1783851674549-3c3eb99e320e58",
+    "referredBy": null
   }
 ]

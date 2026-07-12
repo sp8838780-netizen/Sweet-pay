@@ -42,15 +42,17 @@
         <a href="profile.html" class="nav-item">👤<br>Profile</a>
     </div>
 
+    <script src="auth.js"></script>
     <script>
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'login.html';
+        if (!requireAuth()) {
+            return;
         }
+
+        const token = localStorage.getItem('token');
 
         async function loadBank() {
             try {
-                const response = await fetch('/api/bank', { headers: { Authorization: `Bearer ${token}` } });
+                const response = await fetch('/api/bank', { headers: addAuthHeader() });
                 const data = await response.json();
                 if (data.success && data.bankDetails) {
                     renderBank(data.bankDetails);
@@ -78,7 +80,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
+                        ...addAuthHeader()
                     },
                     body: JSON.stringify(payload)
                 });

@@ -26,9 +26,10 @@
         .status-pill { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
         
         .success { color: #00bfa5; background: #e0f2f1; }
-        .cancel { color: #ff5252; background: #ffebee; }
+        .cancelled { color: #ff5252; background: #ffebee; }
         .timeout { color: #ff9100; background: #fff3e0; }
         .in-payment { color: #2979ff; background: #e3f2fd; }
+        .pending-approval { color: #7e57c2; background: #f3e5f5; }
         .pending { color: #7e57c2; background: #f3e5f5; }
     </style>
 </head>
@@ -48,45 +49,63 @@
 
     <div id="historyList"></div>
 
+    <script src="auth.js"></script>
     <script>
-        // ज़ूमिंग रोकने के लिए एक्स्ट्रा प्रोटेक्शन
         document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-        
-        const staticTransactions = [
-            { amount: "5000 RS", status: "Cancel", income: "150", quota: "+5150", order: "BFbw0adp" },
-            { amount: "3300 RS", status: "Success", income: "99", quota: "+3399", order: "BFbw0msc" },
-            { amount: "479 RS", status: "Timeout", income: "14.37", quota: "+493.37", order: "BFb0y0yi" }
-        ];
 
-        function filterData(status, event) {
-            if (event) {
-                document.querySelectorAll('.filter-bar span').forEach(el => el.classList.remove('active'));
-                event.target.classList.add('active');
+        function formatStatus(status) {
+            const normalized = (status || '').toUpperCase();
+            if (normalized === 'IN_PAYMENT') return 'In Payment';
+            if (normalized === 'PENDING_APPROVAL') return 'Pending Approval';
+            if (normalized === 'SUCCESS') return 'Success';
+            if (normalized === 'TIMEOUT') return 'Timeout';
+            if (normalized === 'CANCELLED') return 'Cancelled';
+            return status || 'Pending';
+        }
+
+        function classForStatus(status) {
+            const normalized = (status || '').toUpperCase();
+            if (normalized === 'SUCCESS') return 'success';
+            if (normalized === 'TIMEOUT') return 'timeout';
+            if (normalized === 'CANCELLED') return 'cancelled';
+            if (normalized === 'PENDING_APPROVAL' || normalized === 'PENDING') return 'pending-approval';
+            return 'in-payment';
+        }
+
+        async function loadHistory() {
+            if (!requireAuth()) return;
+            try {
+                const response = await fetch('/api/my-payments', { headers: addAuthHeader() });
+                const data = await response.json();
+                const payments = (data.payments || []).map(order => ({
+                    amount: `${order.amount} RS`,
+                    status: formatStatus(order.status),
+                    income: (order.amount * 0.03).toFixed(2),
+                    quota: `+${(order.amount * 1.03).toFixed(2)}`,
+                    order: order.requestID
+                }));
+                const pendingOrder = JSON.parse(localStorage.getItem('pendingOrder') || 'null');
+                if (pendingOrder) {
+                    payments.unshift({
+                        amount: `${pendingOrder.amount} RS`,
+                        status: formatStatus(pendingOrder.status),
+                        income: (pendingOrder.amount * 0.03).toFixed(2),
+                        quota: `+${(pendingOrder.amount * 1.03).toFixed(2)}`,
+                        order: pendingOrder.requestID
+                    });
+                }
+                renderTransactions(payments);
+            } catch (error) {
+                console.error(error);
+                renderTransactions([]);
             }
+        }
 
+        function renderTransactions(transactions) {
             const list = document.getElementById('historyList');
-            list.innerHTML = "";
-
-            const liveOrders = JSON.parse(localStorage.getItem('my_recharge_orders') || '[]');
-            
-            const formattedLiveOrders = liveOrders.map(order => {
-                const inc = (order.amount * 0.03).toFixed(2);
-                const qta = (order.amount * 1.03).toFixed(2);
-                return {
-                    amount: order.amount + " RS",
-                    status: order.status,
-                    income: inc,
-                    quota: "+" + qta,
-                    order: order.id
-                };
-            });
-
-            const allTransactions = [...formattedLiveOrders, ...staticTransactions];
-            const filtered = (status === 'All') ? allTransactions : allTransactions.filter(t => t.status === status);
-
-            filtered.forEach(t => {
-                const classStatus = t.status.toLowerCase().replace(" ", "-");
-                
+            list.innerHTML = '';
+            transactions.forEach(t => {
+                const classStatus = classForStatus(t.status);
                 list.innerHTML += `
                     <div class="history-card">
                         <div>
@@ -98,8 +117,22 @@
                 `;
             });
         }
-        
-        filterData('All');
+
+        function filterData(status, event) {
+            if (event) {
+                document.querySelectorAll('.filter-bar span').forEach(el => el.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            const activeStatus = status || 'All';
+            const transactions = window.allTransactions || [];
+            const filtered = activeStatus === 'All' ? transactions : transactions.filter(t => t.status === activeStatus || t.status === activeStatus.replace('Cancelled', 'Cancelled'));
+            renderTransactions(filtered);
+        }
+
+        window.allTransactions = [];
+        document.addEventListener('DOMContentLoaded', loadHistory);
     </script>
 </body>
 </html>

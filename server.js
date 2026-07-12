@@ -5,6 +5,22 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const app = express();
 
+function loadEnvFile(filePath) {
+    if (!fs.existsSync(filePath)) return;
+    const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+    lines.forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const separatorIndex = trimmed.indexOf('=');
+        if (separatorIndex < 0) return;
+        const key = trimmed.slice(0, separatorIndex).trim();
+        const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '');
+        if (!process.env[key]) process.env[key] = value;
+    });
+}
+
+loadEnvFile(path.join(__dirname, '.env'));
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
@@ -45,9 +61,16 @@ const paymentSchema = new mongoose.Schema({
     sellerID: { type: String, required: true },
     mobile: { type: String, required: true },
     amount: { type: Number, required: true },
-    utr: { type: String, required: true, unique: true },
-    proofImage: { type: String, required: true },
-    status: { type: String, default: 'PENDING' },
+    utr: { type: String, default: null, sparse: true },
+    proofImage: { type: String, default: null },
+    status: { type: String, default: 'IN_PAYMENT' },
+    bankDetails: {
+        accountNo: { type: String, default: null },
+        ifsc: { type: String, default: null },
+        bankName: { type: String, default: null },
+        holderName: { type: String, default: null }
+    },
+    expiresAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
@@ -266,9 +289,11 @@ function base64UrlDecode(value) {
 }
 
 function createJwt(payload) {
+    const now = Math.floor(Date.now() / 1000);
+    const tokenPayload = { ...payload, iat: now, exp: now + 86400 };
     const header = { alg: 'HS256', typ: 'JWT' };
     const encodedHeader = base64UrlEncode(JSON.stringify(header));
-    const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+    const encodedPayload = base64UrlEncode(JSON.stringify(tokenPayload));
     const signature = crypto.createHmac('sha256', JWT_SECRET).update(`${encodedHeader}.${encodedPayload}`).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
@@ -281,7 +306,11 @@ function verifyJwt(token) {
     const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${payload}`).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     if (expected !== signature) return null;
     try {
-        return JSON.parse(base64UrlDecode(payload));
+        const parsedPayload = JSON.parse(base64UrlDecode(payload));
+        if (parsedPayload.exp && Math.floor(Date.now() / 1000) >= parsedPayload.exp) {
+            return null;
+        }
+        return parsedPayload;
     } catch (error) {
         return null;
     }
@@ -304,6 +333,35 @@ function sanitizeUser(user) {
         bankDetails: user.bankDetails || {},
         createdAt: user.createdAt
     };
+}
+
+function sanitizePayment(payment) {
+    if (!payment) return null;
+    return {
+        requestID: payment.requestID,
+        userID: payment.userID,
+        sellerID: payment.sellerID,
+        mobile: payment.mobile,
+        amount: Number(payment.amount || 0),
+        utr: payment.utr || null,
+        proofImage: payment.proofImage || null,
+        status: payment.status || 'IN_PAYMENT',
+        bankDetails: payment.bankDetails || {},
+        expiresAt: payment.expiresAt ? new Date(payment.expiresAt).toISOString() : null,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt
+    };
+}
+
+async function syncPaymentState(payment) {
+    if (!payment) return null;
+    const expiresAt = payment.expiresAt ? new Date(payment.expiresAt) : null;
+    if (expiresAt && expiresAt.getTime() <= Date.now() && String(payment.status || '').toUpperCase() === 'IN_PAYMENT') {
+        payment.status = 'TIMEOUT';
+        payment.updatedAt = new Date();
+        await payment.save();
+    }
+    return payment;
 }
 
 function requireAuth(req, res, next) {
@@ -370,7 +428,7 @@ app.post('/api/register', async (req, res) => {
             referredBy: referralCode,
             myReferralCode: generateReferralCode(),
             userID: generateUserID(),
-            walletBalance: 10000,
+            walletBalance: 0,
             totalRecharge: 0,
             commission: 0
         });
@@ -431,7 +489,7 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/p2p/match-account', requireAuth, async (req, res) => {
+app.get('/api/bank-details/match-account', requireAuth, async (req, res) => {
     try {
         const requestedAmount = parseInt(req.query.amount, 10);
         if (!requestedAmount || requestedAmount < 200) {
@@ -465,17 +523,21 @@ app.get('/api/p2p/match-account', requireAuth, async (req, res) => {
     }
 });
 
+app.get('/api/p2p/match-account', requireAuth, async (req, res) => {
+    req.url = '/api/bank-details/match-account' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+    return app.handle(req, res);
+});
+
 app.post('/api/submit-deposit', requireAuth, async (req, res) => {
     try {
         const amount = parseInt(req.body.amount, 10);
         const sellerID = req.body.sellerID || null;
-        const utr = req.body.utr || `UTR${Date.now()}`;
-        const proofImage = req.body.proofImage || 'upload-pending';
         if (!amount || amount < 200) {
             return res.status(400).json({ success: false, message: 'Minimum deposit amount is ₹200.' });
         }
 
         let matchedSeller = sellerID;
+        let bankDetails = {};
         if (!matchedSeller) {
             const seller = await User.findOne({
                 status: 'ON',
@@ -484,6 +546,10 @@ app.post('/api/submit-deposit', requireAuth, async (req, res) => {
                 'bankDetails.accountNo': { $ne: null }
             });
             matchedSeller = seller ? seller.userID : 'AUTO';
+            if (seller) bankDetails = seller.bankDetails || {};
+        } else {
+            const seller = await User.findOne({ userID: matchedSeller });
+            if (seller) bankDetails = seller.bankDetails || {};
         }
 
         const requestID = 'REQ' + crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -493,21 +559,80 @@ app.post('/api/submit-deposit', requireAuth, async (req, res) => {
             sellerID: matchedSeller,
             mobile: req.user.mobile,
             amount,
-            utr,
-            proofImage
+            utr: null,
+            proofImage: null,
+            status: 'IN_PAYMENT',
+            bankDetails,
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000)
         });
         await payment.save();
-        res.json({ success: true, requestID, message: 'Deposit request submitted successfully. Please wait for verification.' });
+        res.json({ success: true, requestID, order: sanitizePayment(payment), message: 'Deposit order created. Please continue to the payment page.' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Unable to submit deposit request.' });
     }
 });
 
+app.get('/api/orders/:requestID', requireAuth, async (req, res) => {
+    try {
+        const payment = await Payment.findOne({ requestID: req.params.requestID, userID: req.user.userID });
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Order not found.' });
+        }
+        const syncedPayment = await syncPaymentState(payment);
+        res.json({ success: true, order: sanitizePayment(syncedPayment) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Unable to load order details.' });
+    }
+});
+
+app.post('/api/orders/:requestID/submit', requireAuth, async (req, res) => {
+    try {
+        const { utr, proofImage } = req.body;
+        const payment = await Payment.findOne({ requestID: req.params.requestID, userID: req.user.userID });
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Order not found.' });
+        }
+        if (!utr || !proofImage) {
+            return res.status(400).json({ success: false, message: 'Please enter the UTR and upload a screenshot.' });
+        }
+        if (['TIMEOUT', 'CANCELLED', 'SUCCESS'].includes(String(payment.status || '').toUpperCase())) {
+            return res.status(400).json({ success: false, message: 'This order can no longer be updated.' });
+        }
+        payment.utr = String(utr);
+        payment.proofImage = String(proofImage);
+        payment.status = 'PENDING_APPROVAL';
+        payment.updatedAt = new Date();
+        await payment.save();
+        res.json({ success: true, order: sanitizePayment(payment), message: 'Payment proof submitted. Waiting for admin approval.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Unable to submit payment proof.' });
+    }
+});
+
+app.post('/api/orders/:requestID/cancel', requireAuth, async (req, res) => {
+    try {
+        const payment = await Payment.findOne({ requestID: req.params.requestID, userID: req.user.userID });
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Order not found.' });
+        }
+        if (['TIMEOUT', 'CANCELLED', 'SUCCESS'].includes(String(payment.status || '').toUpperCase())) {
+            return res.status(400).json({ success: false, message: 'This order is already completed.' });
+        }
+        payment.status = 'CANCELLED';
+        payment.updatedAt = new Date();
+        await payment.save();
+        res.json({ success: true, order: sanitizePayment(payment), message: 'Order cancelled.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Unable to cancel order.' });
+    }
+});
+
 app.get('/api/my-payments', requireAuth, async (req, res) => {
     try {
         const payments = await Payment.find({ userID: req.user.userID }).sort({ createdAt: -1 });
-        res.json({ success: true, payments });
+        const syncedPayments = await Promise.all((payments || []).map(syncPaymentState));
+        res.json({ success: true, payments: syncedPayments.map(sanitizePayment) });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Unable to load payment history.' });
     }
@@ -631,9 +756,12 @@ app.post('/api/admin/process-payment', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized admin access.' });
         }
         const { requestID, action } = req.body;
-        const payRequest = await Payment.findOne({ requestID, status: 'PENDING' });
+        const payRequest = await Payment.findOne({ requestID });
         if (!payRequest) {
             return res.status(404).json({ success: false, message: 'Request not found.' });
+        }
+        if (['SUCCESS', 'CANCELLED'].includes(String(payRequest.status || '').toUpperCase())) {
+            return res.json({ success: true, message: 'Request already completed.' });
         }
 
         if (action === 'APPROVED') {
@@ -651,7 +779,7 @@ app.post('/api/admin/process-payment', async (req, res) => {
                 await buyer.save();
                 await creditReferralCommission(buyer.userID, payRequest.amount);
             }
-            payRequest.status = 'APPROVED';
+            payRequest.status = 'SUCCESS';
         } else {
             payRequest.status = 'CANCELLED';
         }
