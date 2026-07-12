@@ -75,8 +75,8 @@
     <div class="header">Deposit</div>
     
     <div class="tabs">
-        <button class="tab active" onclick="showTab('inr')">INR</button>
-        <button class="tab" onclick="showTab('usdt')">USDT</button>
+        <button class="tab active" id="inr-tab" onclick="showTab('inr')">INR</button>
+        <button class="tab" id="usdt-tab" onclick="showTab('usdt')">USDT</button>
     </div>
 
     <!-- INR Section -->
@@ -187,7 +187,6 @@
                 demoOrders.push(Math.round(amount * 100) / 100);
             }
         }
-        generateDemoOrders();
 
         function renderOrders(orders) {
             const list = document.getElementById('orders-list');
@@ -245,23 +244,31 @@
         }
 
         function showTab(tab) {
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            document.getElementById('inr-section').classList.remove('active');
-            document.getElementById('usdt-section').classList.remove('active');
+            // Update tab buttons
+            document.getElementById('inr-tab').classList.remove('active');
+            document.getElementById('usdt-tab').classList.remove('active');
             
             if (tab === 'inr') {
+                document.getElementById('inr-tab').classList.add('active');
                 document.getElementById('inr-section').classList.add('active');
+                document.getElementById('usdt-section').classList.remove('active');
+                // Render orders when INR tab is shown
+                renderOrders(demoOrders);
             } else {
+                document.getElementById('usdt-tab').classList.add('active');
+                document.getElementById('inr-section').classList.remove('active');
                 document.getElementById('usdt-section').classList.add('active');
+                // Generate QR code when USDT tab is shown (only once)
                 if (document.getElementById('qr-code').innerHTML === '') {
-                    new QRCode(document.getElementById('qr-code'), {
-                        text: 'TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ',
-                        width: 180,
-                        height: 180
-                    });
+                    setTimeout(() => {
+                        new QRCode(document.getElementById('qr-code'), {
+                            text: 'TKsLy67nSxwKx2SMk8jkG6KNkRdXtVAMwZ',
+                            width: 180,
+                            height: 180,
+                            colorDark: '#000000',
+                            colorLight: '#ffffff'
+                        });
+                    }, 100);
                 }
             }
         }
@@ -284,7 +291,13 @@
             document.getElementById('total').textContent = total.toFixed(2);
         }
 
-        renderOrders(demoOrders);
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Generate demo orders
+            generateDemoOrders();
+            // Render orders immediately on page load for INR tab
+            renderOrders(demoOrders);
+        });
     </script>
 </body>
 </html>
