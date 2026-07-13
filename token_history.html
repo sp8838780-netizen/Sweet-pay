@@ -34,7 +34,7 @@
         document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
     </script>
 
-    <div class="header" onclick="history.back()">&lt; Token History</div>
+    <div class="header" onclick="window.location.href='dashboard.html'">&lt; Token History</div>
     
     <div class="type-select">
         <button class="type-btn" onclick="toggleModal()">Type ▾</button>
@@ -56,15 +56,45 @@
     </div>
 
     <script>
-        const tokenData = [
-            { type: "Reward", amount: "10.99", utr: "618016993884", desc: "10016684 Top up 1099.00", time: "2026-06-29 17:00:55" },
-            { type: "Commission", amount: "10.00", utr: "618016667724", desc: "10016684 Top up 1000.00", time: "2026-06-29 16:21:03" },
-            { type: "Recharge", amount: "9.50", utr: "617917292406", desc: "10016684 Top up 950.00", time: "2026-06-28 17:37:11" }
-        ];
+        let tokenData = [];
 
         function toggleModal() {
             const modal = document.getElementById('filterModal');
             modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+        }
+
+        async function loadTokenHistory() {
+            try {
+                const res = await fetch('/api/token-history', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+                const data = await res.json();
+                tokenData = data.history || [];
+                filterData('All');
+
+                // SSE for live updates
+                try {
+                    const token = encodeURIComponent(localStorage.getItem('token') || '');
+                    const es = new EventSource('/api/stream?token=' + token);
+                    es.onmessage = (e) => {
+                        try {
+                            const msg = JSON.parse(e.data || '{}');
+                            if (msg.type === 'payment_update' && msg.payment) {
+                                const p = msg.payment;
+                                const entry = {
+                                    type: (p.status === 'SUCCESS') ? 'Recharge' : (p.status === 'PENDING_APPROVAL' ? 'Pending' : p.status),
+                                    amount: String(p.amount || ''),
+                                    utr: p.utr,
+                                    desc: `${p.requestID} ${p.status}`,
+                                    time: p.createdAt
+                                };
+                                tokenData.unshift(entry);
+                                filterData('All');
+                            }
+                        } catch (err) { console.error('SSE token parse', err); }
+                    };
+                } catch (err) { console.warn('Live updates unavailable', err); }
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         function filterData(type) {
@@ -79,7 +109,7 @@
                     <div class="token-card">
                         <div class="token-title">inr${t.type}Agent</div>
                         <div class="row"><span class="label">Amount</span> <span>${t.amount}</span></div>
-                        <div class="row"><span class="label">UTR</span> <span>${t.utr}</span></div>
+                        <div class="row"><span class="label">UTR</span> <span>${t.utr || ''}</span></div>
                         <div class="row"><span class="label">Desc</span> <span style="font-size: 12px;">${t.desc}</span></div>
                         <div class="row"><span class="label">Time</span> <span>${t.time}</span></div>
                     </div>
@@ -87,7 +117,7 @@
             });
         }
 
-        filterData('All');
+        loadTokenHistory();
     </script>
 </body>
 </html>

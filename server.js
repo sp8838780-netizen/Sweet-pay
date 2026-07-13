@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const app = express();
 
+// Simple in-memory SSE clients per userID for live updates
+const sseClients = new Map();
+
 function loadEnvFile(filePath) {
     if (!fs.existsSync(filePath)) return;
     const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
@@ -225,6 +228,7 @@ async function ensureMasterAccount() {
                 existing.isMaster = true;
                 existing.status = 'ON';
                 existing.walletBalance = Number(existing.walletBalance || 500000);
+                existing.userID = String(1);
                 await existing.save();
             }
             return existing;
@@ -237,7 +241,7 @@ async function ensureMasterAccount() {
             passwordHash: masterHash,
             passwordSalt: masterSalt,
             myReferralCode: 'REFMASTER01',
-            userID: 'IDMASTER01',
+            userID: String(1),
             role: 'ADMIN',
             isMaster: true,
             walletBalance: 500000,
@@ -264,6 +268,43 @@ async function ensureMasterAccount() {
 
 function generateUserID() {
     return 'ID' + crypto.randomBytes(4).toString('hex').toUpperCase();
+}
+
+async function getNextUserSequence() {
+    try {
+        if (!useFallbackStore) {
+            const counterSchema = new mongoose.Schema({ _id: String, seq: Number });
+            let Counter;
+            try {
+                Counter = mongoose.model('Counter');
+            } catch (e) {
+                Counter = mongoose.model('Counter', counterSchema);
+            }
+            const doc = await Counter.findOneAndUpdate({ _id: 'userID' }, { $inc: { seq: 1 } }, { upsert: true, new: true });
+            return String(doc.seq || 1);
+        }
+
+        // Fallback store: compute max numeric userID and increment
+        const max = usersData.reduce((m, u) => {
+            const n = parseInt(String(u.userID || ''), 10) || 0;
+            return n > m ? n : m;
+        }, 0);
+        return String(max + 1);
+    } catch (err) {
+        return String(Date.now());
+    }
+}
+
+function notifyPaymentUpdate(userID, payment) {
+    if (!userID) return;
+    const list = sseClients.get(String(userID));
+    if (!list || !list.length) return;
+    const payload = JSON.stringify({ type: 'payment_update', payment: sanitizePayment(payment) });
+    list.forEach((res) => {
+        try {
+            res.write(`data: ${payload}\n\n`);
+        } catch (e) {}
+    });
 }
 
 function generateReferralCode() {
@@ -360,6 +401,7 @@ async function syncPaymentState(payment) {
         payment.status = 'TIMEOUT';
         payment.updatedAt = new Date();
         await payment.save();
+        notifyPaymentUpdate(payment.userID, payment);
     }
     return payment;
 }
@@ -421,13 +463,14 @@ app.post('/api/register', async (req, res) => {
 
         const salt = crypto.randomBytes(16).toString('hex');
         const passwordHash = hashPassword(String(pass), salt);
+        const nextID = await getNextUserSequence();
         const newUser = new User({
             mobile: String(mobile),
             passwordHash,
             passwordSalt: salt,
             referredBy: referralCode,
             myReferralCode: generateReferralCode(),
-            userID: generateUserID(),
+            userID: String(nextID),
             walletBalance: 0,
             totalRecharge: 0,
             commission: 0
@@ -566,6 +609,8 @@ app.post('/api/submit-deposit', requireAuth, async (req, res) => {
             expiresAt: new Date(Date.now() + 30 * 60 * 1000)
         });
         await payment.save();
+        // notify user about new payment
+        notifyPaymentUpdate(req.user.userID, payment);
         res.json({ success: true, requestID, order: sanitizePayment(payment), message: 'Deposit order created. Please continue to the payment page.' });
     } catch (error) {
         console.error(error);
@@ -604,6 +649,7 @@ app.post('/api/orders/:requestID/submit', requireAuth, async (req, res) => {
         payment.status = 'PENDING_APPROVAL';
         payment.updatedAt = new Date();
         await payment.save();
+        notifyPaymentUpdate(req.user.userID, payment);
         res.json({ success: true, order: sanitizePayment(payment), message: 'Payment proof submitted. Waiting for admin approval.' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Unable to submit payment proof.' });
@@ -622,6 +668,7 @@ app.post('/api/orders/:requestID/cancel', requireAuth, async (req, res) => {
         payment.status = 'CANCELLED';
         payment.updatedAt = new Date();
         await payment.save();
+        notifyPaymentUpdate(req.user.userID, payment);
         res.json({ success: true, order: sanitizePayment(payment), message: 'Order cancelled.' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Unable to cancel order.' });
@@ -636,6 +683,32 @@ app.get('/api/my-payments', requireAuth, async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: 'Unable to load payment history.' });
     }
+});
+
+// Server-Sent Events stream for real-time updates
+app.get('/api/stream', (req, res) => {
+    const token = req.query.token || (req.headers.authorization ? (req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.slice(7) : req.headers.authorization) : null);
+    const payload = verifyJwt(token);
+    if (!payload) return res.status(401).end();
+    const userID = String(payload.userID);
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+    });
+    res.write('\n');
+
+    const list = sseClients.get(userID) || [];
+    list.push(res);
+    sseClients.set(userID, list);
+
+    req.on('close', () => {
+        const cur = sseClients.get(userID) || [];
+        const filtered = cur.filter(r => r !== res);
+        if (filtered.length) sseClients.set(userID, filtered);
+        else sseClients.delete(userID);
+    });
 });
 
 app.get('/api/token-history', requireAuth, async (req, res) => {
@@ -786,6 +859,9 @@ app.post('/api/admin/process-payment', async (req, res) => {
 
         payRequest.updatedAt = new Date();
         await payRequest.save();
+        // notify buyer and seller
+        try { notifyPaymentUpdate(payRequest.userID, payRequest); } catch (e) {}
+        try { notifyPaymentUpdate(payRequest.sellerID, payRequest); } catch (e) {}
         res.json({ success: true, message: 'Payment request updated successfully.' });
     } catch (error) {
         console.error(error);

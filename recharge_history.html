@@ -5,14 +5,15 @@
     <title>Recharge History</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .tab-active { border-bottom: 2px solid #000; font-weight: bold; }
+        .tab-active { border-bottom: 2px solid #000; font-weight: bold; color: #000; }
     </style>
 </head>
 <body class="bg-gray-50 p-4">
 
-    <!-- Header -->
+    <!-- Header के बैक बटन को फिक्स किया -->
     <div class="flex items-center mb-6">
-        <span onclick="history.back()" class="text-xl cursor-pointer">←</span>
+        <!-- अब यह सीधा आपके डैशबोर्ड पर ले जाएगा -->
+        <span onclick="window.location.href='dashboard.html'" class="text-2xl cursor-pointer font-bold">←</span>
         <h1 class="mx-auto font-bold text-lg">Recharge History</h1>
     </div>
 
@@ -29,44 +30,92 @@
     <div id="historyList" class="space-y-4"></div>
 
     <script>
-        let history = JSON.parse(localStorage.getItem('rechargeHistory') || '[]');
+        let allData = [];
+        let currentTab = 'All';
+
+        function mapStatusMatches(paymentStatus, tabLabel) {
+            const s = String(paymentStatus || '').toUpperCase();
+            if (tabLabel === 'All') return true;
+            if (tabLabel === 'In Payment') return ['IN_PAYMENT', 'PENDING_APPROVAL'].includes(s);
+            if (tabLabel === 'Success') return s === 'SUCCESS';
+            if (tabLabel === 'Timeout') return s === 'TIMEOUT';
+            if (tabLabel === 'Cancel') return s === 'CANCELLED' || s === 'CANCEL';
+            return false;
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/my-payments', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await response.json();
+                allData = data.payments || [];
+                filterOrders(currentTab);
+
+                // Setup SSE for live updates
+                try {
+                    const token = encodeURIComponent(localStorage.getItem('token') || '');
+                    const es = new EventSource('/api/stream?token=' + token);
+                    es.onmessage = (e) => {
+                        try {
+                            const msg = JSON.parse(e.data || '{}');
+                            if (msg.type === 'payment_update' && msg.payment) {
+                                const p = msg.payment;
+                                const idx = allData.findIndex(x => x.requestID === p.requestID);
+                                if (idx >= 0) allData[idx] = p;
+                                else allData.unshift(p);
+                                filterOrders(currentTab);
+                            }
+                        } catch (err) { console.error('SSE parse', err); }
+                    };
+                } catch (err) { console.warn('Live updates unavailable', err); }
+            } catch (err) {
+                console.log("History load error: " + err);
+            }
+        }
 
         function filterOrders(status) {
-            // टैब की स्टाइल बदलना
+            currentTab = status;
             document.querySelectorAll('button').forEach(b => b.classList.remove('tab-active'));
-            document.getElementById('tab-' + status).classList.add('tab-active');
+            // find button by text
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === status);
+            if (btn) btn.classList.add('tab-active');
 
             const list = document.getElementById('historyList');
-            let filtered = (status === 'All') ? history : history.filter(o => o.status === status);
+            const filtered = allData.filter(o => mapStatusMatches(o.status, status));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-400 mt-10">No records found</p>';
+                return;
+            }
 
             list.innerHTML = filtered.map(o => `
-                <div class="bg-white p-4 rounded-lg shadow-sm border ${o.status === 'In Payment' && !o.utr ? 'cursor-pointer' : ''}" 
-                     onclick="${o.status === 'In Payment' && !o.utr ? `window.location.href='task-detail.html?amount=${o.amount}'` : ''}">
-                    
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
                     <div class="flex justify-between items-center mb-2">
                         <div>
                             <span class="font-bold text-lg">${o.amount} RS</span>
-                            <span class="ml-2 text-xs font-bold ${getColor(o.status)}">${o.status}</span>
+                            <span class="ml-2 text-xs font-bold ${getColor(o.status)}">${String(o.status || '').toUpperCase()}</span>
                         </div>
-                        ${o.utr ? `<span class="text-xs">UTR:${o.utr}</span>` : '<span class="text-xl">›</span>'}
+                        ${o.utr ? `<span class="text-xs">UTR:${o.utr}</span>` : '<span class="text-xs text-gray-400">Waiting...</span>'}
                     </div>
-                    
                     <div class="flex text-xs text-gray-500">
-                        <span class="mr-6">Income <br> <b>${(o.amount * 0.04).toFixed(0)}</b></span>
-                        <span>Quota <br> <b class="text-teal-600">+${(o.amount * 1.04).toFixed(0)}</b></span>
+                        <span class="mr-6">Income <br> <b>${(Number(o.amount || 0) * 0.04).toFixed(0)}</b></span>
+                        <span>Quota <br> <b class="text-teal-600">+${(Number(o.amount || 0) * 1.04).toFixed(0)}</b></span>
                     </div>
                 </div>
             `).join('');
         }
 
         function getColor(status) {
-            if (status === 'Success') return 'text-teal-500';
-            if (status === 'In Payment') return 'text-orange-500';
-            if (status === 'Cancel') return 'text-red-500';
+            const s = String(status || '').toUpperCase();
+            if (s === 'SUCCESS') return 'text-teal-500';
+            if (s === 'IN_PAYMENT' || s === 'PENDING_APPROVAL') return 'text-orange-500';
+            if (s === 'CANCELLED' || s === 'CANCEL') return 'text-red-500';
+            if (s === 'TIMEOUT') return 'text-purple-500';
             return 'text-gray-500';
         }
 
-        filterOrders('All');
+        window.onload = loadHistory;
     </script>
 </body>
 </html>
