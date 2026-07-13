@@ -687,7 +687,16 @@ app.get('/api/my-payments', requireAuth, async (req, res) => {
 
 // Server-Sent Events stream for real-time updates
 app.get('/api/stream', (req, res) => {
-    const token = req.query.token || (req.headers.authorization ? (req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.slice(7) : req.headers.authorization) : null);
+    let token = null;
+    if (req.query && req.query.token) {
+        try {
+            token = decodeURIComponent(req.query.token);
+        } catch (e) {
+            token = req.query.token;
+        }
+    } else if (req.headers.authorization) {
+        token = req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.slice(7) : req.headers.authorization;
+    }
     const payload = verifyJwt(token);
     if (!payload) return res.status(401).end();
     const userID = String(payload.userID);

@@ -55,7 +55,35 @@
                 // Setup SSE for live updates
                 try {
                     const token = encodeURIComponent(localStorage.getItem('token') || '');
-                    const es = new EventSource('/api/stream?token=' + token);
+                    let es = new EventSource('/api/stream?token=' + token);
+                    let polling = false;
+                    let pollIntervalId = null;
+
+                    const startPolling = () => {
+                        if (polling) return;
+                        polling = true;
+                        pollIntervalId = setInterval(async () => {
+                            try {
+                                const r = await fetch('/api/my-payments', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+                                const dd = await r.json();
+                                const newList = dd.payments || [];
+                                // merge by requestID
+                                newList.forEach(p => {
+                                    const idx = allData.findIndex(x => x.requestID === p.requestID);
+                                    if (idx >= 0) allData[idx] = p;
+                                    else allData.unshift(p);
+                                });
+                                filterOrders(currentTab);
+                            } catch (e) { console.error('polling err', e); }
+                        }, 5000);
+                    };
+
+                    const stopPolling = () => {
+                        if (pollIntervalId) clearInterval(pollIntervalId);
+                        polling = false;
+                        pollIntervalId = null;
+                    };
+
                     es.onmessage = (e) => {
                         try {
                             const msg = JSON.parse(e.data || '{}');
@@ -68,6 +96,22 @@
                             }
                         } catch (err) { console.error('SSE parse', err); }
                     };
+
+                    es.onopen = () => {
+                        stopPolling();
+                    };
+
+                    es.onerror = (err) => {
+                        console.warn('SSE error, falling back to polling', err);
+                        try { es.close(); } catch (e) {}
+                        startPolling();
+                    };
+
+                    // cleanup on unload
+                    window.addEventListener('beforeunload', () => {
+                        try { es.close(); } catch (e) {}
+                        stopPolling();
+                    });
                 } catch (err) { console.warn('Live updates unavailable', err); }
             } catch (err) {
                 console.log("History load error: " + err);

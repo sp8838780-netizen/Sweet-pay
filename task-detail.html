@@ -55,10 +55,42 @@
     <button onclick="showConfirm()" class="w-full bg-red-600 text-white py-3 rounded-lg mt-2 font-bold">Cancel</button>
 
     <script>
-        // सीधे URL से अमाउंट उठाना
+        // Get requestID from URL and load order from server
         const urlParams = new URLSearchParams(window.location.search);
-        const amount = urlParams.get('amount') || "0";
-        document.getElementById('moneyDisplay').innerText = amount + " RS";
+        const requestID = urlParams.get('requestID') || null;
+        let currentOrder = null;
+        if (requestID) {
+            (async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    if (!token) { window.location.href = 'login.html'; return; }
+                    const res = await fetch('/api/orders/' + encodeURIComponent(requestID), { headers: { 'Authorization': 'Bearer ' + token } });
+                    const data = await res.json();
+                    if (data && data.success && data.order) {
+                        currentOrder = data.order;
+                        document.getElementById('moneyDisplay').innerText = currentOrder.amount + " RS";
+                        // TODO: display bank details if you want
+                        if (currentOrder.expiresAt) {
+                            const expires = new Date(currentOrder.expiresAt).getTime();
+                            const updateTimer = () => {
+                                const diff = Math.floor((expires - Date.now()) / 1000);
+                                if (diff <= 0) { document.getElementById('timerDisplay').innerText = 'Time Out'; return; }
+                                const mm = Math.floor(diff / 60).toString().padStart(2,'0');
+                                const ss = (diff % 60).toString().padStart(2,'0');
+                                document.getElementById('timerDisplay').innerText = `00:${mm}:${ss}`;
+                            };
+                            updateTimer();
+                            setInterval(updateTimer, 1000);
+                        }
+                    } else {
+                        alert('Order not found');
+                        window.location.href = 'recharge_history.html';
+                    }
+                } catch (err) { console.error(err); alert('Unable to load order'); window.location.href = 'recharge_history.html'; }
+            })();
+        } else {
+            document.getElementById('moneyDisplay').innerText = 'Loading... RS';
+        }
 
         function copyText(text) { navigator.clipboard.writeText(text); alert("Copied!"); }
         
@@ -70,11 +102,31 @@
         }
 
         function submitTask() {
+            if(!requestID) { alert('No request id'); return; }
             if(!document.getElementById('utrInput').value || !document.getElementById('fileInput').files[0]) {
                 alert("Error: Please provide UTR and Payment Screenshot!");
                 return;
             }
-            window.location.href = 'recharge_history.html';
+            const file = document.getElementById('fileInput').files[0];
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64 = String(e.target.result || '');
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch('/api/orders/' + encodeURIComponent(requestID) + '/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify({ utr: String(document.getElementById('utrInput').value), proofImage: base64 })
+                    });
+                    const d = await res.json();
+                    if (d && d.success) {
+                        window.location.href = 'recharge_history.html';
+                    } else {
+                        alert(d && d.message ? d.message : 'Unable to submit proof');
+                    }
+                } catch (err) { console.error(err); alert('Network error'); }
+            };
+            reader.readAsDataURL(file);
         }
 
         // टाइमर
@@ -85,7 +137,17 @@
             document.getElementById('timerDisplay').innerText = `00:${Math.floor(time/60).toString().padStart(2,'0')}:${(time%60).toString().padStart(2,'0')}`;
         }, 1000);
         
-        function showConfirm() { if(confirm("Are you sure you want to cancel this order?")) window.location.href = 'deposit.html'; }
+        async function showConfirm() {
+            if (!requestID) { window.location.href = 'deposit.html'; return; }
+            if (!confirm("Are you sure you want to cancel this order?")) return;
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/orders/' + encodeURIComponent(requestID) + '/cancel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                const d = await res.json();
+                if (d && d.success) window.location.href = 'recharge_history.html';
+                else { alert(d && d.message ? d.message : 'Unable to cancel'); }
+            } catch (err) { console.error(err); alert('Network error'); }
+        }
     </script>
 </body>
 </html>

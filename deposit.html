@@ -99,17 +99,26 @@
         }).sort((a,b) => a.amount - b.amount);
 
         // P2P वाला createOrder फंक्शन
-        function createOrder(amount) {
-            let history = JSON.parse(localStorage.getItem('rechargeHistory') || '[]');
-            history.unshift({ 
-                amount: amount, 
-                utr: "", 
-                status: "In Payment", 
-                time: new Date().toLocaleString(),
-                seller: sellers[Math.floor(Math.random() * sellers.length)] 
-            });
-            localStorage.setItem('rechargeHistory', JSON.stringify(history));
-            window.location.href = 'task-detail.html?amount=' + amount;
+        async function createOrder(amount) {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) { window.location.href = 'login.html'; return; }
+                const res = await fetch('/api/submit-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ amount: Number(amount) })
+                });
+                const data = await res.json();
+                if (data && data.success && data.requestID) {
+                    // redirect to task detail with requestID
+                    window.location.href = 'task-detail.html?requestID=' + encodeURIComponent(data.requestID);
+                    return;
+                }
+                alert(data && data.message ? data.message : 'Unable to create order');
+            } catch (err) {
+                console.error(err);
+                alert('Network error creating order');
+            }
         }
 
         function render(data) {
