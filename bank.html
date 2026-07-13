@@ -19,6 +19,7 @@
     </style>
 </head>
 <body>
+
     <div id="add-bank-page">
         <h3>Add Bank Account</h3>
         <div class="input-group"><input type="text" id="holderName" placeholder="Account Holder Name"></div>
@@ -44,21 +45,21 @@
 
     <script src="auth.js"></script>
     <script>
-        if (!requireAuth()) {
-            return;
-        }
-
-        const token = localStorage.getItem('token');
+        // यह पक्का करेगा कि पेज खाली न दिखे
+        window.onload = async function() {
+            if (typeof requireAuth === 'function' && !requireAuth()) return;
+            await loadBank();
+        };
 
         async function loadBank() {
             try {
-                const response = await fetch('/api/bank', { headers: addAuthHeader() });
+                const response = await fetch('/api/bank', { headers: typeof addAuthHeader === 'function' ? addAuthHeader() : {} });
                 const data = await response.json();
                 if (data.success && data.bankDetails) {
                     renderBank(data.bankDetails);
                 }
             } catch (error) {
-                console.error(error);
+                console.log("No existing bank data found or server offline.");
             }
         }
 
@@ -78,10 +79,7 @@
             try {
                 const response = await fetch('/api/bank', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...addAuthHeader()
-                    },
+                    headers: { 'Content-Type': 'application/json', ...(typeof addAuthHeader === 'function' ? addAuthHeader() : {}) },
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
@@ -89,11 +87,10 @@
                     renderBank(payload);
                     alert('Bank details saved successfully.');
                 } else {
-                    alert(data.message || 'Unable to save bank details.');
+                    alert(data.message || 'Error saving.');
                 }
             } catch (error) {
-                console.error(error);
-                alert('Server connection error.');
+                alert('Server Error.');
             }
         }
 
@@ -101,25 +98,27 @@
             const bankName = data.bankName || 'BANK';
             const bankDomain = bankName.toLowerCase().replace(/\s/g, '') + '.com';
             const logoUrl = `https://www.google.com/s2/favicons?domain=${bankDomain}&sz=128`;
-            document.getElementById('saved-details').innerHTML = `
-                <div class="bank-logo-box">
-                    <img src="${logoUrl}" onerror="this.src='https://via.placeholder.com/50?text=${bankName.charAt(0).toUpperCase()}'">
-                </div>
-                <div>
-                    <strong style="font-size: 18px;">${bankName.toUpperCase()}</strong><br>
-                    <small style="color: #aaa;">Acc: ****${String(data.accountNo || '').slice(-4)}</small>
-                </div>
-            `;
-            document.getElementById('add-bank-page').style.display = 'none';
-            document.getElementById('bank-list-page').style.display = 'block';
+            
+            const container = document.getElementById('saved-details');
+            if (container) {
+                container.innerHTML = `
+                    <div class="bank-logo-box">
+                        <img src="${logoUrl}" onerror="this.src='https://via.placeholder.com/50?text=${bankName.charAt(0).toUpperCase()}'">
+                    </div>
+                    <div>
+                        <strong style="font-size: 18px;">${bankName.toUpperCase()}</strong><br>
+                        <small style="color: #aaa;">Acc: ****${String(data.accountNo || '').slice(-4)}</small>
+                    </div>
+                `;
+                document.getElementById('add-bank-page').style.display = 'none';
+                document.getElementById('bank-list-page').style.display = 'block';
+            }
         }
 
         function showAddPage() {
             document.getElementById('add-bank-page').style.display = 'block';
             document.getElementById('bank-list-page').style.display = 'none';
         }
-
-        window.onload = loadBank;
     </script>
 </body>
 </html>
