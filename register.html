@@ -89,8 +89,9 @@
 
                 if (data.success) {
                     saveAuth(data);
-                    alert('Registration successful!\nYour unique ID: ' + data.userID);
-                    window.location.href = 'profile.html';
+                    alert('Registration successful!\nYour unique ID: ' + data.userID + '\n\nClick OK to download the app.');
+                    // यहाँ डाउनलोड लिंक रिडायरेक्ट जोड़ा गया है
+                    window.location.href = 'https://www.webtonative.com/api/v1/demo/download/6a55670e2e0cc4fc6f4e9e7a/ANDROID?t=1784066724495';
                 } else {
                     alert(data.message || 'Registration failed.');
                 }

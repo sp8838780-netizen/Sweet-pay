@@ -20,7 +20,7 @@
     <!-- Tabs -->
     <div class="flex justify-between text-sm text-gray-500 mb-6 border-b pb-2">
         <button onclick="filterOrders('All')" id="tab-All" class="tab-active">All</button>
-        <button onclick="filterOrders('In Payment')" id="tab-In Payment">In Payment</button>
+        <button onclick="filterOrders('Pending')" id="tab-Pending">Pending</button>
         <button onclick="filterOrders('Success')" id="tab-Success">Success</button>
         <button onclick="filterOrders('Timeout')" id="tab-Timeout">Timeout</button>
         <button onclick="filterOrders('Cancel')" id="tab-Cancel">Cancel</button>
@@ -36,7 +36,7 @@
         function mapStatusMatches(paymentStatus, tabLabel) {
             const s = String(paymentStatus || '').toUpperCase();
             if (tabLabel === 'All') return true;
-            if (tabLabel === 'In Payment') return ['IN_PAYMENT', 'PENDING_APPROVAL'].includes(s);
+            if (tabLabel === 'In Payment') return ['PENDING_APPROVAL', 'PENDING_APPROVAL'].includes(s);
             if (tabLabel === 'Success') return s === 'SUCCESS';
             if (tabLabel === 'Timeout') return s === 'TIMEOUT';
             if (tabLabel === 'Cancel') return s === 'CANCELLED' || s === 'CANCEL';
