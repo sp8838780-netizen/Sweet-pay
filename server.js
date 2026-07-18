@@ -574,46 +574,45 @@ app.get('/api/p2p/match-account', requireAuth, async (req, res) => {
 app.post('/api/submit-deposit', requireAuth, async (req, res) => {
     try {
         const amount = parseInt(req.body.amount, 10);
-        const sellerID = req.body.sellerID || null;
         if (!amount || amount < 200) {
             return res.status(400).json({ success: false, message: 'Minimum deposit amount is ₹200.' });
         }
 
-        let matchedSeller = sellerID;
-        let bankDetails = {};
-        if (!matchedSeller) {
-            const seller = await User.findOne({
-                status: 'ON',
-                walletBalance: { $gte: amount },
-                'bankDetails.bankStatus': 'ON',
-                'bankDetails.accountNo': { $ne: null }
-            });
-            matchedSeller = seller ? seller.userID : 'AUTO';
-            if (seller) bankDetails = seller.bankDetails || {};
-        } else {
-            const seller = await User.findOne({ userID: matchedSeller });
-            if (seller) bankDetails = seller.bankDetails || {};
-        }
+        // फिक्स: रैंडम सेलर ढूँढें या 'AUTO' सेट करें
+        const seller = await User.findOne({ 
+            status: 'ON', 
+            role: 'ADMIN' // यह सुनिश्चित करता है कि केवल एडमिन ही मिले
+        });
+
+        const matchedSeller = seller ? seller.userID : 'AUTO';
+        const bankDetails = seller ? (seller.bankDetails || {}) : {};
 
         const requestID = 'REQ' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        
         const payment = new Payment({
             requestID,
             userID: req.user.userID,
             sellerID: matchedSeller,
             mobile: req.user.mobile,
             amount,
-            utr: null,
-            proofImage: null,
             status: 'IN_PAYMENT',
             bankDetails,
             expiresAt: new Date(Date.now() + 30 * 60 * 1000)
         });
+
         await payment.save();
-        // notify user about new payment
-        notifyPaymentUpdate(req.user.userID, payment);
-        res.json({ success: true, requestID, order: sanitizePayment(payment), message: 'Deposit order created. Please continue to the payment page.' });
+        
+        // सुरक्षित रूप से नोटिफाई करें
+        try { notifyPaymentUpdate(req.user.userID, payment); } catch(e) {}
+
+        res.json({ 
+            success: true, 
+            requestID, 
+            order: sanitizePayment(payment), 
+            message: 'Deposit order created.' 
+        });
     } catch (error) {
-        console.error(error);
+        console.error('Submit Deposit Error:', error);
         res.status(500).json({ success: false, message: 'Unable to submit deposit request.' });
     }
 });
