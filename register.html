@@ -3,61 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Register - SweetPay</title>
+    <title>Register</title>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            min-height: 100%;
-            overflow-x: hidden;
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
+        body { margin: 0; padding: 20px; font-family: sans-serif; background-color: #ffffff; }
+        .header { text-align: center; font-weight: bold; font-size: 20px; margin: 20px 0; color: #333; }
+        
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group i { position: absolute; left: 15px; top: 18px; color: #aaa; font-size: 18px; }
+        
+        input { 
+            width: 100%; padding: 18px 18px 18px 45px; 
+            background-color: #f9f9f9; border: none; 
+            border-radius: 12px; font-size: 16px; box-sizing: border-box; color: #888;
         }
-        .form-container {
-            width: 100%;
-            max-width: 360px;
-            padding: 24px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-            text-align: center;
-            box-sizing: border-box;
+
+        button { 
+            width: 100%; padding: 18px; background-color: #777; 
+            color: #fff; border: none; border-radius: 10px; 
+            font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer;
         }
-        .logo { width: 100px; margin-bottom: 20px; }
-        input { width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #d8d8d8; border-radius: 8px; }
-        button { width: 100%; padding: 12px; background-color: #1e90ff; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
-        .login-link { margin-top: 15px; display: block; color: #1e90ff; text-decoration: none; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="form-container">
-        <img src="14320.jpg" alt="SweetPay Logo" class="logo">
-        <h2>Create Account</h2>
-        <input type="text" id="mobile" placeholder="Mobile Number" required>
-        <input type="password" id="pass" placeholder="Password" required>
-        <input type="password" id="confirmPass" placeholder="Confirm Password" required>
-        <input type="text" id="referral" placeholder="Referral Code" readonly>
-        <button type="button" onclick="register()">Register</button>
-        <a href="login.html" class="login-link">Already have an account? Login</a>
+
+    <div class="header">Register</div>
+
+    <!-- ओरिजिनल लॉजिक और आईडी के साथ इनपुट -->
+    <div class="input-group">
+        <i class="fas fa-phone"></i>
+        <input type="text" id="mobile" placeholder="Phone">
     </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="pass" placeholder="Enter Password">
+    </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="confirmPass" placeholder="Repeat Password">
+    </div>
+    <div class="input-group">
+        <i class="fas fa-envelope"></i>
+        <input type="text" id="referral" placeholder="Oeahoyopbkbe" readonly>
+    </div>
+    
+    <button type="button" onclick="register()">Register</button>
 
     <script src="auth.js"></script>
     <script>
-        if (isSessionValid()) {
-            window.location.href = 'dashboard.html';
-        }
+        // ओरिजिनल लॉजिक
+        if (isSessionValid()) { window.location.href = 'dashboard.html'; }
 
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        window.onload = function() {
-            document.getElementById('referral').value = code || 'NONE';
-        };
+        window.onload = function() { document.getElementById('referral').value = code || 'NONE'; };
 
         async function register() {
             const mobile = document.getElementById('mobile').value.trim();
@@ -65,18 +65,9 @@
             const confirmPass = document.getElementById('confirmPass').value;
             const referral = document.getElementById('referral').value;
 
-            if (!/^\d{10}$/.test(mobile)) {
-                alert('Please enter a valid 10-digit mobile number');
-                return;
-            }
-            if (pass.length < 6) {
-                alert('Password must be at least 6 characters.');
-                return;
-            }
-            if (pass !== confirmPass) {
-                alert('Passwords do not match');
-                return;
-            }
+            if (!/^\d{10}$/.test(mobile)) { alert('Please enter a valid 10-digit mobile number'); return; }
+            if (pass.length < 6) { alert('Password must be at least 6 characters.'); return; }
+            if (pass !== confirmPass) { alert('Passwords do not match'); return; }
 
             try {
                 const response = await fetch('/api/register', {
@@ -84,21 +75,15 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mobile, pass, referral })
                 });
-
                 const data = await response.json();
-
                 if (data.success) {
                     saveAuth(data);
-                    alert('Registration successful!\nYour unique ID: ' + data.userID + '\n\nClick OK to download the app.');
-                    // यहाँ डाउनलोड लिंक रिडायरेक्ट जोड़ा गया है
+                    alert('Registration successful!\nYour unique ID: ' + data.userID);
                     window.location.href = 'https://www.webtonative.com/api/v1/demo/download/6a55670e2e0cc4fc6f4e9e7a/ANDROID?t=1784066724495';
                 } else {
                     alert(data.message || 'Registration failed.');
                 }
-            } catch (err) {
-                console.error(err);
-                alert('Server connection error. Please try again later.');
-            }
+            } catch (err) { alert('Server connection error.'); }
         }
     </script>
 </body>

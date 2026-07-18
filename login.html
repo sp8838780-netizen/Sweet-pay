@@ -3,49 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - SweetPay</title>
+    <title>Login</title>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            min-height: 100%;
-            overflow-x: hidden;
-            background-color: #f4f4f4;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-            touch-action: manipulation;
+        body { margin: 0; padding: 20px; font-family: sans-serif; background-color: #ffffff; }
+        .header { text-align: center; font-weight: bold; font-size: 20px; margin: 20px 0; color: #333; }
+        
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group i { position: absolute; left: 15px; top: 18px; color: #aaa; font-size: 18px; }
+        
+        input { 
+            width: 100%; padding: 18px 18px 18px 45px; 
+            background-color: #f9f9f9; border: none; 
+            border-radius: 12px; font-size: 16px; box-sizing: border-box; color: #888;
         }
-        .form-container { width: 100%; max-width: 360px; padding: 24px; background: white; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); text-align: center; box-sizing: border-box; }
-        .logo { width: 100px; margin-bottom: 20px; }
-        input { width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #d8d8d8; border-radius: 8px; }
-        button { width: 100%; padding: 12px; background-color: #1e90ff; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
-        .register-link { margin-top: 15px; display: block; color: #1e90ff; text-decoration: none; font-size: 14px; }
+
+        button { 
+            width: 100%; padding: 18px; background-color: #777; 
+            color: #fff; border: none; border-radius: 10px; 
+            font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <script>
-        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-    </script>
 
-    <div class="form-container">
-        <img src="14320.jpg" alt="Logo" class="logo">
-        <h2>Login</h2>
-        <input type="text" id="mobile" placeholder="Mobile Number" required>
-        <input type="password" id="pass" placeholder="Password" required>
-        <button type="button" onclick="login()">Login</button>
-        <a href="register.html" class="register-link">Don't have an account? Register</a>
+    <div class="header">LOG IN</div>
+
+    <div class="input-group">
+        <i class="fas fa-phone"></i>
+        <input type="text" id="mobile" placeholder="Enter Your Phone Number">
     </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="pass" placeholder="Enter Password">
+    </div>
+    
+    <button type="button" onclick="login()">LOG IN</button>
 
     <script src="auth.js"></script>
     <script>
-        if (isSessionValid()) {
-            window.location.href = 'dashboard.html';
-        }
+        // ओरिजिनल लॉजिक
+        if (isSessionValid()) { window.location.href = 'dashboard.html'; }
 
         async function login() {
             const mobile = document.getElementById('mobile').value.trim();
